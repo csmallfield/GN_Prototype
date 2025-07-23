@@ -62,7 +62,7 @@ static func _copy_material(source_material: ShaderMaterial) -> ShaderMaterial:
 	new_material.shader = source_material.shader
 	
 	# Get all shader parameters and copy them
-	# This list should match all parameters in your PlanetShader_Stage9.gdshader
+	# This list should match all parameters in your PlanetShader_Stage10.gdshader
 	var shader_params = [
 		"planet_radius", "edge_softness", "uv_offset_x", "uv_offset_y",
 		"continent_seed", "terrain_seed", "river_seed", "detail_seed", "cloud_seed",
@@ -70,6 +70,8 @@ static func _copy_material(source_material: ShaderMaterial) -> ShaderMaterial:
 		"light_direction", "light_intensity", "light_color",
 		"shadow_tint", "shadow_tint_strength", "ambient_light", "ambient_color",
 		"rim_light_intensity", "rim_light_color", "rim_light_falloff",
+		"rim_light_crescent_power", "rim_light_crescent_offset", "rim_light_glow_intensity", 
+		"rim_light_glow_radius", "rim_light_glow_enabled",
 		"continent_scale", "continent_threshold", "continent_sharpness", 
 		"continent_octaves", "continent_persistence", "ocean_depth",
 		"warp_strength", "warp_scale", "terrain_scale", "terrain_strength",
@@ -80,8 +82,9 @@ static func _copy_material(source_material: ShaderMaterial) -> ShaderMaterial:
 		"cloud_persistence", "cloud_density", "cloud_sharpness",
 		"cloud_color", "cloud_shadow_color", "cloud_opacity", "cloud_shadow_strength",
 		"cloud_offset_x", "cloud_offset_y", "river_scale", "river_strength",
-		"river_width", "river_octaves", "river_persistence", "ice_cap_size",
-		"ice_cap_softness", "desert_latitude", "desert_width", "desert_intensity",
+		"river_width", "river_octaves", "river_persistence", 
+		"river_glow_enabled", "river_glow_intensity", "river_glow_radius", "river_glow_color",
+		"ice_cap_size", "ice_cap_softness", "desert_latitude", "desert_width", "desert_intensity",
 		"deep_ocean_color", "shallow_water_color", "river_color",
 		"mountain_color", "highland_color", "lowland_color", "desert_color",
 		"ice_color", "coastal_blend", "beach_color", "core_color", "core_size",
