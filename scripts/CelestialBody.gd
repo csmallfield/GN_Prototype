@@ -102,37 +102,37 @@ func apply_system_variations(material: ShaderMaterial):
 func apply_star_lighting(material: ShaderMaterial, system_id: String):
 	"""Apply star-type-specific lighting"""
 	match system_id:
-		"sol_system":
+		#"sol_system":
 			# Yellow star - warm light
-			material.set_shader_parameter("light_color", Color(1.0, 0.95, 0.8))
-			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
+			#material.set_shader_parameter("light_color", Color(1.0, 0.95, 0.8))
+			#material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
 			
-		"sirius_system":
+		#"sirius_system":
 			# Blue-white star - cool bright light
-			material.set_shader_parameter("light_color", Color(0.9, 0.95, 1.0))
-			material.set_shader_parameter("light_intensity", 1.2)
-			material.set_shader_parameter("ambient_color", Color(0.6, 0.7, 1.0))
+			#material.set_shader_parameter("light_color", Color(0.9, 0.95, 1.0))
+			#material.set_shader_parameter("light_intensity", 1.2)
+			#material.set_shader_parameter("ambient_color", Color(0.6, 0.7, 1.0))
 			
-		"antares_system":
+		#"antares_system":
 			# Red supergiant - warm red light
-			material.set_shader_parameter("light_color", Color(1.0, 0.7, 0.5))
-			material.set_shader_parameter("ambient_color", Color(0.8, 0.4, 0.3))
+			#material.set_shader_parameter("light_color", Color(1.0, 0.7, 0.5))
+			#material.set_shader_parameter("ambient_color", Color(0.8, 0.4, 0.3))
 			
-		"rigel_system":
+		#"rigel_system":
 			# Blue supergiant - intense blue-white light
-			material.set_shader_parameter("light_color", Color(0.8, 0.9, 1.0))
-			material.set_shader_parameter("light_intensity", 1.4)
-			material.set_shader_parameter("ambient_color", Color(0.5, 0.6, 1.0))
+			#material.set_shader_parameter("light_color", Color(0.8, 0.9, 1.0))
+			#material.set_shader_parameter("light_intensity", 1.4)
+			#material.set_shader_parameter("ambient_color", Color(0.5, 0.6, 1.0))
 			
-		"arcturus_system":
+		#"arcturus_system":
 			# Red giant - warm orange light
-			material.set_shader_parameter("light_color", Color(1.0, 0.8, 0.6))
-			material.set_shader_parameter("ambient_color", Color(0.7, 0.5, 0.4))
+			#material.set_shader_parameter("light_color", Color(1.0, 0.8, 0.6))
+			#material.set_shader_parameter("ambient_color", Color(0.7, 0.5, 0.4))
 			
-		"vega_system":
+		#"vega_system":
 			# Blue-white star - bright cool light
-			material.set_shader_parameter("light_color", Color(0.9, 0.9, 1.0))
-			material.set_shader_parameter("light_intensity", 1.1)
+			#material.set_shader_parameter("light_color", Color(0.9, 0.9, 1.0))
+			#material.set_shader_parameter("light_intensity", 1.1)
 			
 		_:
 			# Default: slight variation but don't override library settings too much

@@ -57,45 +57,48 @@ static func _load_library():
 	print("PlanetLibrary loaded successfully with ", _cached_library.get_child_count(), " planets")
 
 static func _copy_material(source_material: ShaderMaterial) -> ShaderMaterial:
-	"""Create a new material copying all parameters from source"""
+	"""Create a new material copying all parameters from source automatically"""
 	var new_material = ShaderMaterial.new()
 	new_material.shader = source_material.shader
 	
-	# Get all shader parameters and copy them
-	# This list should match all parameters in your PlanetShader_Stage10.gdshader
-	var shader_params = [
-		"planet_radius", "edge_softness", "uv_offset_x", "uv_offset_y",
-		"continent_seed", "terrain_seed", "river_seed", "detail_seed", "cloud_seed",
-		"output_mode", "normal_map_intensity", "sphere_strength",
-		"light_direction", "light_intensity", "light_color",
-		"shadow_tint", "shadow_tint_strength", "ambient_light", "ambient_color",
-		"rim_light_intensity", "rim_light_color", "rim_light_falloff",
-		"rim_light_crescent_power", "rim_light_crescent_offset", "rim_light_glow_intensity", 
-		"rim_light_glow_radius", "rim_light_glow_enabled",
-		"continent_scale", "continent_threshold", "continent_sharpness", 
-		"continent_octaves", "continent_persistence", "ocean_depth",
-		"warp_strength", "warp_scale", "terrain_scale", "terrain_strength",
-		"terrain_octaves", "terrain_persistence", "terrain_softness",
-		"detail_scale", "detail_strength", "detail_octaves",
-		"mountain_threshold", "highland_threshold", "cloud_coverage",
-		"cloud_scale", "cloud_stretch_x", "cloud_stretch_y", "cloud_octaves",
-		"cloud_persistence", "cloud_density", "cloud_sharpness",
-		"cloud_color", "cloud_shadow_color", "cloud_opacity", "cloud_shadow_strength",
-		"cloud_offset_x", "cloud_offset_y", "river_scale", "river_strength",
-		"river_width", "river_octaves", "river_persistence", 
-		"river_glow_enabled", "river_glow_intensity", "river_glow_radius", "river_glow_color",
-		"ice_cap_size", "ice_cap_softness", "desert_latitude", "desert_width", "desert_intensity",
-		"deep_ocean_color", "shallow_water_color", "river_color",
-		"mountain_color", "highland_color", "lowland_color", "desert_color",
-		"ice_color", "coastal_blend", "beach_color", "core_color", "core_size",
-		"color_variation", "variation_tint"
-	]
+	if not source_material.shader:
+		push_error("Source material has no shader!")
+		return new_material
 	
-	# Copy each parameter
-	for param_name in shader_params:
-		var value = source_material.get_shader_parameter(param_name)
-		if value != null:
-			new_material.set_shader_parameter(param_name, value)
+	# Use Godot's reflection to automatically find and copy ALL shader parameters
+	var props = source_material.get_property_list()
+	var copied_count = 0
+	var skipped_params = []
+	
+	print("=== Auto-copying shader parameters ===")
+	
+	for prop in props:
+		if prop.name.begins_with("shader_parameter/"):
+			var param_name = prop.name.substr(17)  # Remove "shader_parameter/" prefix
+			var source_value = source_material.get_shader_parameter(param_name)
+			
+			if source_value != null:
+				new_material.set_shader_parameter(param_name, source_value)
+				copied_count += 1
+				
+				# Debug output for specific problematic parameters
+				if param_name in ["light_color", "rim_light_intensity", "river_glow_enabled"]:
+					print("  CRITICAL PARAM: ", param_name, " = ", source_value, " (type: ", typeof(source_value), ")")
+			else:
+				skipped_params.append(param_name)
+	
+	print("Auto-copied ", copied_count, " shader parameters")
+	if skipped_params.size() > 0:
+		print("Skipped (null values): ", skipped_params)
+	
+	# Verify the copy worked for critical parameters
+	print("=== Verification ===")
+	var test_params = ["light_color", "rim_light_intensity", "river_glow_enabled", "light_intensity"]
+	for param in test_params:
+		var source_val = source_material.get_shader_parameter(param)
+		var copied_val = new_material.get_shader_parameter(param)
+		var match_status = "✓" if source_val == copied_val else "✗ MISMATCH"
+		print("  ", param, ": ", source_val, " -> ", copied_val, " ", match_status)
 	
 	return new_material
 
