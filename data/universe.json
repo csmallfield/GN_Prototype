@@ -6,6 +6,11 @@
 	  "flavor_text": "Home to billions of humans across multiple worlds and stations. This system represents the heart of human civilization, where Earth's blue oceans still sparkle alongside the red deserts of terraformed Mars.",
 	  "background": "res://backgrounds/sol_nebula.png",
 	  "connections": ["alpha_centauri", "vega_system"],
+	  "starfield": {
+		"BaseColor": [0.0, 0.0, 0.0],
+		"StarLayers_Star_Density": 1.0,
+		"StarLayers_Star_Brightness": 1.0
+	  },
 	  "traffic": {
 		"spawn_frequency": 1.0,
 		"max_npcs": 20,
@@ -16,16 +21,6 @@
 		  "max_velocity": 200.0,
 		  "visit_duration_range": [3.0, 4.0]
 		}
-	  },
-	  "starfield": {
-		"layer_count": 3,
-		"base_density": 150,
-		"base_color": "#FFFFCC",
-		"parallax_speeds": [0.0, -0.5, -1],
-		"brightness_falloff": [1.0, 0.5, 0.2],
-		"size_range": [1.0, 4.0],
-		"twinkle_enabled": true,
-		"colored_stars": false
 	  },
 	  "celestial_bodies": [
 		{
@@ -118,6 +113,12 @@
 	  "flavor_text": "The first stepping stone beyond Sol, this system buzzes with the energy of pioneers and explorers. New Geneva orbits Proxima Centauri as a testament to human determination to spread among the stars.",
 	  "background": "res://backgrounds/alpha_centauri_nebula.png",
 	  "connections": ["sol_system", "sirius_system", "rigel_system"],
+	  "starfield": {
+		"BaseColor": [0.05, 0.1, 0.15],
+		"StarLayers_Star_Density": 1.2,
+		"StarLayers_Star_Brightness": 1.1,
+		"StarLayers_Twinkle_Speed": 0.3
+	  },
 	  "traffic": {
 		"spawn_frequency": 1.0,
 		"max_npcs": 10,
@@ -128,17 +129,6 @@
 		  "max_velocity": 380.0,
 		  "visit_duration_range": [3.0, 9.0]
 		}
-	  },
-	  "starfield": {
-		"layer_count": 5,
-		"base_density": 200,
-		"base_color": "#CCCCFF",
-		"parallax_speeds": [0.0, 0.2, 0.4, 0.7, 1.0],
-		"brightness_falloff": [1.0, 0.9, 0.7, 0.5, 0.3],
-		"size_range": [1.0, 4.0],
-		"twinkle_enabled": true,
-		"colored_stars": true,
-		"star_colors": ["#FFFFFF", "#CCCCFF", "#FFCCCC", "#CCFFCC"]
 	  },
 	  "celestial_bodies": [
 		{
@@ -239,6 +229,12 @@
 	  "description": "A frontier trading hub",
 	  "flavor_text": "Rough miners and independent traders call this system home, drawn by rich mineral deposits and minimal government oversight. The bright blue-white star Vega illuminates a hardscrabble frontier where fortunes are made and lost daily.",
 	  "connections": ["sol_system", "arcturus_system", "capella_system"],
+	  "starfield": {
+		"BaseColor": [0.0, 0.05, 0.1],
+		"StarLayers_Star_Density": 1.5,
+		"StarLayers_Star_Brightness": 1.3,
+		"StarLayers_Twinkle_Speed": 0.4
+	  },
 	  "traffic": {
 		"spawn_frequency": 20.0,
 		"max_npcs": 2,
@@ -313,6 +309,12 @@
 	  "description": "A wealthy commercial system",
 	  "flavor_text": "The brightest star in Earth's night sky hosts one of humanity's most prosperous worlds. Corporate executives and luxury merchants conduct business beneath the brilliant white light of this binary star system.",
 	  "connections": ["alpha_centauri", "aldebaran_system"],
+	  "starfield": {
+		"BaseColor": [0.1, 0.1, 0.15],
+		"StarLayers_Star_Density": 0.8,
+		"StarLayers_Star_Brightness": 1.4,
+		"StarLayers_Twinkle_Speed": 0.15
+	  },
 	  "traffic": {
 		"spawn_frequency": 6.0,
 		"max_npcs": 6,
@@ -505,6 +507,12 @@
 	  "description": "A dangerous pirate haven",
 	  "flavor_text": "This red supergiant system attracts smugglers, pirates, and others who prefer to operate outside the law. Confederation patrols are few and far between, making it a haven for the galaxy's most wanted.",
 	  "connections": ["rigel_system", "deneb_system"],
+	  "starfield": {
+		"BaseColor": [0.15, 0.05, 0.0],
+		"StarLayers_Star_Density": 2.0,
+		"StarLayers_Star_Brightness": 0.7,
+		"StarLayers_Twinkle_Speed": 0.6
+	  },
 	  "traffic": {
 		"spawn_frequency": 18.0,
 		"max_npcs": 2,

@@ -1,5 +1,5 @@
 # =============================================================================
-# SYSTEM SCENE - Now with NPC Traffic Management
+# SYSTEM SCENE - Now with Starfield Configuration Loading
 # =============================================================================
 # SystemScene.gd
 extends Node2D
@@ -8,6 +8,7 @@ class_name SystemScene
 @onready var celestial_bodies_container = $CelestialBodies
 @onready var player_spawn = $PlayerSpawn
 @onready var traffic_manager = $TrafficManager
+@onready var parallax_starfield = $ParallaxStarfield
 
 func _ready():
 	add_to_group("system_scene")  # Add to group for easy finding
@@ -22,6 +23,9 @@ func _on_system_changed(system_id: String):
 func setup_system(system_data: Dictionary):
 	clear_system()
 	spawn_celestial_bodies(system_data.get("celestial_bodies", []))
+	
+	# Load starfield configuration for this system
+	load_system_starfield(system_data)
 	
 	# Only position player at spawn if it's not a hyperspace transition
 	var player = UniverseManager.player_ship
@@ -39,6 +43,35 @@ func setup_system(system_data: Dictionary):
 				camera.global_position = player.global_position
 				camera.force_update_scroll()
 		# If in hyperspace, let the player ship handle its own positioning
+
+func load_system_starfield(system_data: Dictionary):
+	"""Load the starfield configuration for the current system"""
+	print("SystemScene: Attempting to load starfield configuration")
+	print("SystemScene: parallax_starfield exists: ", parallax_starfield != null)
+	
+	if parallax_starfield:
+		print("SystemScene: parallax_starfield type: ", parallax_starfield.get_class())
+		print("SystemScene: has load_system_starfield method: ", parallax_starfield.has_method("load_system_starfield"))
+		
+		if parallax_starfield.has_method("load_system_starfield"):
+			# Defer the call to make sure the starfield is fully ready
+			parallax_starfield.call_deferred("load_system_starfield", system_data)
+			print("SystemScene: Deferred starfield loading for system: ", system_data.get("name", "Unknown"))
+		else:
+			print("SystemScene: ParallaxStarfield doesn't have load_system_starfield method")
+	else:
+		print("SystemScene: ParallaxStarfield node not found")
+		# Try to find it manually
+		var starfield_node = get_node_or_null("ParallaxStarfield")
+		if starfield_node:
+			print("SystemScene: Found ParallaxStarfield manually: ", starfield_node)
+			starfield_node.call_deferred("load_system_starfield", system_data)
+		else:
+			print("SystemScene: Could not find ParallaxStarfield node at all")
+			# Print all children to help debug
+			print("SystemScene children: ")
+			for child in get_children():
+				print("  - ", child.name, " (", child.get_class(), ")")
 
 func clear_system():
 	for child in celestial_bodies_container.get_children():
