@@ -1,7 +1,7 @@
 // IMPROVED STARFIELD SHADER - Responsive density control
 shader_type canvas_item;
 
-uniform float star_density : hint_range(0.0001, 0.1) = 0.002;
+uniform float star_density : hint_range(0.0001, 0.5) = 0.002;
 uniform float star_brightness : hint_range(0.0, 2.0) = 1.0;
 uniform float star_size : hint_range(0.1, 20.0) = 2.0;
 uniform float twinkle_speed : hint_range(0.0, 2.0) = 0.5;

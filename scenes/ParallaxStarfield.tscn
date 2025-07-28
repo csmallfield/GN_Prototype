@@ -1,101 +1,6 @@
-[gd_scene load_steps=9 format=3 uid="uid://drb0em1la86we"]
+[gd_scene load_steps=6 format=3 uid="uid://drb0em1la86we"]
 
-[ext_resource type="Shader" uid="uid://bsknlb2w31ea3" path="res://shaders/nebulaShader_Stage07.gdshader" id="1_mx1rw"]
 [ext_resource type="Shader" uid="uid://rhp1mq3bjshx" path="res://shaders/StarfieldShader.gdshader" id="2_mx1rw"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_0t005"]
-shader = ExtResource("1_mx1rw")
-shader_parameter/base_scale = 3.051
-shader_parameter/base_density = 0.606
-shader_parameter/base_softness = 0.431
-shader_parameter/base_octaves = 6.0
-shader_parameter/base_lacunarity = 2.735
-shader_parameter/base_gain = 0.531
-shader_parameter/structure_scale = 8.547
-shader_parameter/structure_strength = 0.763
-shader_parameter/structure_contrast = 1.222
-shader_parameter/structure_octaves = 6.0
-shader_parameter/structure_lacunarity = 1.895
-shader_parameter/structure_gain = 0.478
-shader_parameter/wispy_scale = 8.0
-shader_parameter/wispy_strength = 0.474
-shader_parameter/wispy_octaves = 6.0
-shader_parameter/wispy_lacunarity = 2.058
-shader_parameter/wispy_gain = 0.528
-shader_parameter/edge_falloff = 1.702
-shader_parameter/edge_irregularity = 4.245
-shader_parameter/hard_edge_mix = 0.0
-shader_parameter/nebula_base_color = Color(0.222, 0.6, 0.3291, 1)
-shader_parameter/structure_color = Color(0.8, 0.3884, 0.296, 1)
-shader_parameter/wispy_color = Color(0.297, 0.76935, 0.9, 1)
-shader_parameter/edge_color = Color(0.3, 0.8, 0.2, 1)
-shader_parameter/color_blend_smoothness = 0.741
-shader_parameter/overall_brightness = 0.628
-shader_parameter/star_density = 0.475
-shader_parameter/star_scale = 1.835
-shader_parameter/star_brightness = 2.475
-shader_parameter/star_size_variation = 0.186
-shader_parameter/cluster_scale = 7.066
-shader_parameter/cluster_strength = 0.0
-shader_parameter/scatter_randomness = 1.0
-shader_parameter/star_organic_mask_scale = 4.587
-shader_parameter/star_organic_mask_strength = 0.0
-shader_parameter/star_core_size = 0.522
-shader_parameter/star_core_color = Color(1, 0.9, 0.8, 1)
-shader_parameter/star_glow_size = 2.757
-shader_parameter/star_glow_intensity = 0.177
-shader_parameter/star_glow_softness = 2.965
-shader_parameter/star_glow_color = Color(0.8, 0.6, 1, 1)
-shader_parameter/star_glow_blend_mode = 1.317
-shader_parameter/star_nebula_interaction = 0.312
-shader_parameter/star_blend_mode = 0.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_e4am0"]
-shader = ExtResource("1_mx1rw")
-shader_parameter/base_scale = 5.969
-shader_parameter/base_density = 0.657
-shader_parameter/base_softness = 0.323
-shader_parameter/base_octaves = 4.922
-shader_parameter/base_lacunarity = 2.0
-shader_parameter/base_gain = 0.5
-shader_parameter/structure_scale = 4.0
-shader_parameter/structure_strength = 0.6
-shader_parameter/structure_contrast = 1.2
-shader_parameter/structure_octaves = 3.0
-shader_parameter/structure_lacunarity = 2.0
-shader_parameter/structure_gain = 0.54
-shader_parameter/wispy_scale = 8.0
-shader_parameter/wispy_strength = 0.442
-shader_parameter/wispy_octaves = 6.0
-shader_parameter/wispy_lacunarity = 1.778
-shader_parameter/wispy_gain = 0.537
-shader_parameter/edge_falloff = 2.541
-shader_parameter/edge_irregularity = 1.895
-shader_parameter/hard_edge_mix = 0.0
-shader_parameter/nebula_base_color = Color(0.104681, 0.284302, 0.328882, 1)
-shader_parameter/structure_color = Color(0.8, 0.3, 0.5, 1)
-shader_parameter/wispy_color = Color(0.9, 0.7, 0.3, 1)
-shader_parameter/edge_color = Color(0.2, 0.5, 0.8, 1)
-shader_parameter/color_blend_smoothness = 0.8
-shader_parameter/overall_brightness = 1.317
-shader_parameter/star_density = 0.3
-shader_parameter/star_scale = 0.1
-shader_parameter/star_brightness = 0.0
-shader_parameter/star_size_variation = 0.0
-shader_parameter/cluster_scale = 3.0
-shader_parameter/cluster_strength = 0.4
-shader_parameter/scatter_randomness = 0.6
-shader_parameter/star_organic_mask_scale = 4.0
-shader_parameter/star_organic_mask_strength = 0.7
-shader_parameter/star_core_size = 0.5
-shader_parameter/star_core_color = Color(1, 0.9, 0.8, 1)
-shader_parameter/star_glow_size = 0.1
-shader_parameter/star_glow_intensity = 0.8
-shader_parameter/star_glow_softness = 2.0
-shader_parameter/star_glow_color = Color(0.8, 0.6, 1, 1)
-shader_parameter/star_glow_blend_mode = 1.0
-shader_parameter/star_nebula_interaction = 0.6
-shader_parameter/star_blend_mode = 0.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_obgmf"]
 shader = ExtResource("2_mx1rw")
@@ -141,55 +46,14 @@ scroll_scale = Vector2(0, 0)
 repeat_size = Vector2(2048, 2048)
 repeat_times = 3
 
-[node name="ColorRect1" type="ColorRect" parent="BaseColor"]
+[node name="BaseColor" type="ColorRect" parent="BaseColor"]
 z_index = -100
 offset_left = -1024.0
 offset_top = -1024.0
 offset_right = 1024.0
 offset_bottom = 1024.0
 mouse_filter = 2
-color = Color(0.000829521, 0.00451328, 0.0823368, 1)
-
-[node name="BaseColor2" type="Parallax2D" parent="."]
-visible = false
-z_index = -100
-scroll_scale = Vector2(0, 0)
-
-[node name="Nebula07" type="ColorRect" parent="BaseColor2"]
-material = SubResource("ShaderMaterial_0t005")
-offset_left = -2950.0
-offset_top = -3102.0
-offset_right = 5146.0
-offset_bottom = 4994.0
-pivot_offset = Vector2(1024, 1024)
-
-[node name="BaseColor3" type="Parallax2D" parent="."]
-visible = false
-z_index = -100
-scroll_scale = Vector2(0.3, 0.3)
-
-[node name="Nebula08" type="ColorRect" parent="BaseColor3"]
-material = SubResource("ShaderMaterial_e4am0")
-offset_left = -2950.0
-offset_top = -3102.0
-offset_right = 5146.0
-offset_bottom = 4994.0
-pivot_offset = Vector2(1024, 1024)
-
-[node name="BaseColor4" type="Parallax2D" parent="."]
-visible = false
-z_index = -100
-scroll_scale = Vector2(0.5, 0.5)
-scroll_offset = Vector2(1, -6)
-
-[node name="Nebula08" type="ColorRect" parent="BaseColor4"]
-material = SubResource("ShaderMaterial_e4am0")
-offset_left = 4042.0
-offset_top = -524.0
-offset_right = 12138.0
-offset_bottom = 7572.0
-rotation = 2.30211
-pivot_offset = Vector2(1024, 1024)
+color = Color(0, 0, 0, 1)
 
 [node name="StarLayer4" type="Parallax2D" parent="."]
 z_index = -100
