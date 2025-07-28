@@ -7,13 +7,13 @@
 	  "background": "res://backgrounds/sol_nebula.png",
 	  "connections": ["alpha_centauri", "vega_system"],
 	  "traffic": {
-		"spawn_frequency": 5.0,
-		"max_npcs": 5,
+		"spawn_frequency": 1.0,
+		"max_npcs": 20,
 		"spawn_frequency_variance": 3.0,
 		"npc_config": {
-		  "thrust_power": 520.0,
+		  "thrust_power": 100.0,
 		  "rotation_speed": 3.2,
-		  "max_velocity": 420.0,
+		  "max_velocity": 200.0,
 		  "visit_duration_range": [3.0, 4.0]
 		}
 	  },
@@ -119,8 +119,8 @@
 	  "background": "res://backgrounds/alpha_centauri_nebula.png",
 	  "connections": ["sol_system", "sirius_system", "rigel_system"],
 	  "traffic": {
-		"spawn_frequency": 12.0,
-		"max_npcs": 4,
+		"spawn_frequency": 1.0,
+		"max_npcs": 10,
 		"spawn_frequency_variance": 4.0,
 		"npc_config": {
 		  "thrust_power": 480.0,

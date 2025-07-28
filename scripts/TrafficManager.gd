@@ -67,6 +67,11 @@ func get_active_npc_count() -> int:
 
 func spawn_npc():
 	"""Spawn a new NPC ship from hyperspace"""
+	# Occasionally spawn formations arriving from hyperspace
+	if randf() < 0.2 and should_spawn_npc():  # 20% chance and room for 2 ships
+		spawn_hyperspace_formation()
+		return
+	
 	var npc_ship = create_npc_ship()
 	if not npc_ship:
 		return
@@ -107,8 +112,15 @@ func spawn_initial_npcs():
 	if debug_mode:
 		print("TrafficManager: Spawning ", initial_count, " initial NPCs")
 	
-	for i in range(initial_count):
-		spawn_existing_npc()
+	var spawned_count = 0
+	while spawned_count < initial_count:
+		# Occasionally spawn formations/pairs
+		if spawned_count < initial_count - 1 and randf() < 0.3:  # 30% chance for formation
+			spawn_formation_pair()
+			spawned_count += 2
+		else:
+			spawn_existing_npc()
+			spawned_count += 1
 		
 		# Small delay between spawns to spread them out
 		await get_tree().create_timer(0.1).timeout
@@ -146,6 +158,89 @@ func spawn_existing_npc():
 	if debug_mode:
 		print("TrafficManager: Spawned existing NPC in state: ", initial_state)
 
+func spawn_formation_pair():
+	"""Spawn two NPCs that will fly in formation"""
+	var leader = create_npc_ship()
+	var follower = create_npc_ship()
+	
+	if not leader or not follower:
+		return
+	
+	# Add both to scene
+	get_parent().add_child.call_deferred(leader)
+	get_parent().add_child.call_deferred(follower)
+	current_npcs.append(leader)
+	current_npcs.append(follower)
+	
+	# Wait for them to be added to the scene tree
+	await get_tree().process_frame
+	
+	if not is_instance_valid(leader) or not is_instance_valid(follower):
+		return
+	
+	# Set up formation relationship
+	follower.formation_leader = leader
+	leader.formation_followers.append(follower)
+	follower.formation_offset = Vector2(randf_range(-100, 100), randf_range(120, 180))
+	
+	# Choose formation spawn type
+	var formation_type = choose_initial_npc_state()
+	
+	match formation_type:
+		"visiting":
+			spawn_formation_at_celestial_body(leader, follower)
+		"traveling_to_planet":
+			spawn_formation_traveling_to_planet(leader, follower)
+		"traveling_to_exit":
+			spawn_formation_traveling_to_exit(leader, follower)
+		_:
+			spawn_formation_mid_system(leader, follower)
+	
+	if debug_mode:
+		print("TrafficManager: Spawned formation pair in state: ", formation_type)
+
+func spawn_hyperspace_formation():
+	"""Spawn a formation arriving from hyperspace"""
+	var leader = create_npc_ship()
+	var follower = create_npc_ship()
+	
+	if not leader or not follower:
+		return
+	
+	# Calculate spawn data
+	var spawn_data = calculate_hyperspace_entry()
+	
+	# Set up formation relationship
+	follower.formation_leader = leader
+	leader.formation_followers.append(follower)
+	follower.formation_offset = Vector2(randf_range(-80, 80), randf_range(100, 150))
+	
+	# Position leader at spawn point
+	leader.global_position = spawn_data.position
+	leader.linear_velocity = spawn_data.velocity
+	
+	# Position follower in formation relative to leader
+	var entry_direction = spawn_data.velocity.normalized()
+	var formation_pos = spawn_data.position + follower.formation_offset.rotated(entry_direction.angle() - PI/2)
+	follower.global_position = formation_pos
+	follower.linear_velocity = spawn_data.velocity
+	
+	# Add to scene
+	get_parent().add_child(leader)
+	get_parent().add_child(follower)
+	current_npcs.append(leader)
+	current_npcs.append(follower)
+	
+	# Initialize hyperspace entry for leader
+	leader.start_hyperspace_entry(spawn_data.position, spawn_data.velocity, spawn_data.origin_system)
+	
+	# Follower starts in formation mode
+	follower.hyperspace_destination = spawn_data.origin_system
+	follower.current_ai_state = follower.AIState.FORMATION_FLYING
+	
+	if debug_mode:
+		print("TrafficManager: Spawned formation from hyperspace at ", spawn_data.position)
+
 func choose_initial_npc_state() -> String:
 	"""Choose what state the pre-existing NPC should be in"""
 	var states = ["visiting", "traveling_to_planet", "traveling_to_exit", "mid_system"]
@@ -182,6 +277,30 @@ func spawn_npc_at_celestial_body(npc_ship: NPCShip):
 	npc_ship.target_celestial_body = celestial_body
 	npc_ship.current_ai_state = npc_ship.AIState.VISITING_BODY
 	npc_ship.visit_timer = randf_range(0, npc_ship.visit_duration * 0.8)  # Already been there a while
+
+func spawn_formation_at_celestial_body(leader: NPCShip, follower: NPCShip):
+	"""Spawn a formation near a celestial body"""
+	var celestial_body = choose_random_celestial_body()
+	if not celestial_body:
+		spawn_formation_mid_system(leader, follower)
+		return
+	
+	var body_pos = celestial_body.global_position
+	var base_distance = randf_range(200, 300)
+	var base_angle = randf() * TAU
+	
+	# Position leader
+	leader.global_position = body_pos + Vector2.from_angle(base_angle) * base_distance
+	leader.target_celestial_body = celestial_body
+	leader.current_ai_state = leader.AIState.ORBITING_BODY
+	leader.orbit_angle = base_angle
+	leader.orbit_radius = base_distance
+	
+	# Position follower in formation
+	var formation_pos = leader.global_position + follower.formation_offset
+	follower.global_position = formation_pos
+	follower.target_celestial_body = celestial_body
+	follower.current_ai_state = follower.AIState.FORMATION_FLYING
 
 func spawn_npc_traveling_to_planet(npc_ship: NPCShip):
 	"""Spawn NPC traveling toward a celestial body"""
@@ -223,6 +342,38 @@ func spawn_npc_traveling_to_planet(npc_ship: NPCShip):
 	npc_ship.target_celestial_body = celestial_body
 	npc_ship.current_ai_state = npc_ship.AIState.FLYING_TO_TARGET
 
+func spawn_formation_traveling_to_planet(leader: NPCShip, follower: NPCShip):
+	"""Spawn a formation traveling toward a celestial body"""
+	var celestial_body = choose_random_celestial_body()
+	if not celestial_body:
+		spawn_formation_mid_system(leader, follower)
+		return
+	
+	# Position formation somewhere between system edge and celestial body
+	var body_pos = celestial_body.global_position
+	var system_center = Vector2.ZERO
+	var direction_to_body = (body_pos - system_center).normalized()
+	
+	var distance_factor = randf_range(0.4, 0.7)
+	var formation_distance = max(800.0, 2000 * distance_factor)
+	var base_pos = system_center + direction_to_body * formation_distance
+	
+	# Set up leader
+	leader.global_position = base_pos
+	leader.target_celestial_body = celestial_body
+	leader.current_ai_state = leader.AIState.FLYING_TO_TARGET
+	
+	var travel_speed = randf_range(180, 250)
+	leader.linear_velocity = (body_pos - leader.global_position).normalized() * travel_speed
+	leader.rotation = leader.linear_velocity.angle() - PI/2
+	
+	# Set up follower in formation
+	var formation_pos = base_pos + follower.formation_offset.rotated(leader.rotation)
+	follower.global_position = formation_pos
+	follower.linear_velocity = leader.linear_velocity
+	follower.rotation = leader.rotation
+	follower.current_ai_state = follower.AIState.FORMATION_FLYING
+
 func spawn_npc_traveling_to_exit(npc_ship: NPCShip):
 	"""Spawn NPC traveling toward hyperspace exit"""
 	var system_center = Vector2.ZERO
@@ -248,6 +399,33 @@ func spawn_npc_traveling_to_exit(npc_ship: NPCShip):
 	# Set exit target
 	npc_ship.target_position = system_center + exit_direction * 3500.0
 	npc_ship.current_ai_state = npc_ship.AIState.FLYING_TO_EXIT
+
+func spawn_formation_traveling_to_exit(leader: NPCShip, follower: NPCShip):
+	"""Spawn a formation traveling toward hyperspace exit"""
+	var system_center = Vector2.ZERO
+	var exit_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+	
+	# Position formation in mid-system
+	var formation_distance = randf_range(800, 1200)
+	var spawn_angle = randf() * TAU
+	var base_pos = system_center + Vector2.from_angle(spawn_angle) * formation_distance
+	
+	# Set up leader
+	leader.global_position = base_pos
+	leader.target_position = system_center + exit_direction * 3500.0
+	leader.current_ai_state = leader.AIState.FLYING_TO_EXIT
+	
+	var travel_speed = randf_range(120, 200)
+	leader.linear_velocity = exit_direction * travel_speed
+	leader.rotation = leader.linear_velocity.angle() - PI/2
+	
+	# Set up follower in formation
+	var formation_pos = base_pos + follower.formation_offset.rotated(leader.rotation)
+	follower.global_position = formation_pos
+	follower.linear_velocity = leader.linear_velocity
+	follower.rotation = leader.rotation
+	follower.target_position = leader.target_position
+	follower.current_ai_state = follower.AIState.FORMATION_FLYING
 
 func spawn_npc_mid_system(npc_ship: NPCShip):
 	"""Spawn NPC in middle of system with random movement"""
@@ -278,6 +456,37 @@ func spawn_npc_mid_system(npc_ship: NPCShip):
 		var exit_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
 		npc_ship.target_position = system_center + exit_direction * 3500.0
 		npc_ship.current_ai_state = npc_ship.AIState.FLYING_TO_EXIT
+
+func spawn_formation_mid_system(leader: NPCShip, follower: NPCShip):
+	"""Spawn a formation in the middle of the system"""
+	var system_center = Vector2.ZERO
+	var formation_distance = randf_range(700, 1200)
+	var spawn_angle = randf() * TAU
+	var base_pos = Vector2.from_angle(spawn_angle) * formation_distance
+	
+	# Set up leader
+	leader.global_position = base_pos
+	var travel_speed = randf_range(100, 180)
+	var travel_angle = randf() * TAU
+	leader.linear_velocity = Vector2.from_angle(travel_angle) * travel_speed
+	leader.rotation = leader.linear_velocity.angle() - PI/2
+	
+	# Choose target for leader
+	var celestial_body = choose_random_celestial_body()
+	if celestial_body:
+		leader.target_celestial_body = celestial_body
+		leader.current_ai_state = leader.AIState.FLYING_TO_TARGET
+	else:
+		var exit_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+		leader.target_position = system_center + exit_direction * 3500.0
+		leader.current_ai_state = leader.AIState.FLYING_TO_EXIT
+	
+	# Set up follower in formation
+	var formation_pos = base_pos + follower.formation_offset.rotated(leader.rotation)
+	follower.global_position = formation_pos
+	follower.linear_velocity = leader.linear_velocity
+	follower.rotation = leader.rotation
+	follower.current_ai_state = follower.AIState.FORMATION_FLYING
 
 func choose_random_celestial_body() -> Node2D:
 	"""Choose a random celestial body from the current system"""

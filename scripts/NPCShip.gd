@@ -24,7 +24,12 @@ enum AIState {
 	FLYING_TO_TARGET,    # Moving toward a celestial body
 	VISITING_BODY,       # Paused at a celestial body
 	FLYING_TO_EXIT,      # Moving toward hyperspace exit
-	HYPERSPACE_EXIT      # Leaving via hyperspace
+	HYPERSPACE_EXIT,     # Leaving via hyperspace
+	ORBITING_BODY,       # Orbiting around a celestial body
+	MEETING_SHIP,        # Flying to meet another NPC
+	COMMUNICATING,       # Paused with another ship for communication
+	FOLLOWING_SHIP,      # Following another NPC ship
+	FORMATION_FLYING     # Flying in formation with other ships
 }
 
 enum HyperspacePhase {
@@ -43,6 +48,22 @@ var visit_timer: float = 0.0
 var visit_duration: float = 5.0  # How long to pause at celestial bodies
 var state_timer: float = 0.0
 var hyperspace_timer: float = 0.0
+
+# Formation and social behavior variables
+var formation_leader: NPCShip = null
+var formation_followers: Array[NPCShip] = []
+var formation_offset: Vector2 = Vector2.ZERO
+var communication_partner: NPCShip = null
+var communication_timer: float = 0.0
+var communication_duration: float = 5.0
+var orbit_radius: float = 200.0
+var orbit_angle: float = 0.0
+var orbit_speed: float = 0.5
+
+# Social behavior chances (0.0 to 1.0)
+var formation_chance: float = 0.15    # 15% chance to form/join formations
+var communication_chance: float = 0.1  # 10% chance to communicate with nearby ships
+var orbit_chance: float = 0.2         # 20% chance to orbit instead of just visiting
 
 # Hyperspace sequence variables (same as player)
 var target_rotation: float = 0.0
@@ -84,9 +105,9 @@ func apply_hue_shift():
 
 func randomize_ship_stats():
 	"""Add some variety to ship performance"""
-	thrust_modifier = randf_range(0.6, 1.2)
-	turn_rate_modifier = randf_range(0.6, 1.2)
-	visit_duration = randf_range(4.0, 10.0)  # Increased visit duration
+	thrust_modifier = randf_range(0.8, 1.2)
+	turn_rate_modifier = randf_range(0.8, 1.2)
+	visit_duration = randf_range(4.0, 6.0)  # Increased visit duration
 	
 	# Apply modifiers
 	thrust_power *= thrust_modifier
@@ -125,6 +146,16 @@ func _integrate_forces(state):
 			handle_flying_to_target(state)
 		AIState.VISITING_BODY:
 			handle_visiting_body(state)
+		AIState.ORBITING_BODY:
+			handle_orbiting_body(state)
+		AIState.MEETING_SHIP:
+			handle_meeting_ship(state)
+		AIState.COMMUNICATING:
+			handle_communicating(state)
+		AIState.FOLLOWING_SHIP:
+			handle_following_ship(state)
+		AIState.FORMATION_FLYING:
+			handle_formation_flying(state)
 		AIState.FLYING_TO_EXIT:
 			handle_flying_to_exit(state)
 		AIState.HYPERSPACE_EXIT:
@@ -161,11 +192,153 @@ func handle_flying_to_target(state):
 	
 	# Check if we've arrived
 	if distance_to_target <= arrival_distance:
-		transition_to_state(AIState.VISITING_BODY)
+		# Decide whether to orbit or just visit
+		if randf() < orbit_chance:
+			transition_to_state(AIState.ORBITING_BODY)
+		else:
+			transition_to_state(AIState.VISITING_BODY)
 		return
+	
+	# Check for potential social interactions while traveling
+	check_for_social_opportunities()
 	
 	# Navigate toward target with deceleration
 	navigate_to_position_with_decel(state, target_pos, arrival_distance)
+
+func check_for_social_opportunities():
+	"""Check for nearby ships to interact with"""
+	# Only check occasionally to avoid performance issues
+	if state_timer < 2.0 or randf() > 0.1:  # 10% chance per check, after 2 seconds
+		return
+	
+	var nearby_ships = find_nearby_npcs(400.0)  # Look within 400 units
+	
+	for ship in nearby_ships:
+		if ship == self:
+			continue
+			
+		# Communication opportunity
+		if randf() < communication_chance and can_communicate_with(ship):
+			initiate_communication(ship)
+			return
+		
+		# Formation opportunity
+		if randf() < formation_chance and can_form_formation_with(ship):
+			join_formation(ship)
+			return
+
+func find_nearby_npcs(radius: float) -> Array[NPCShip]:
+	"""Find other NPC ships within the specified radius"""
+	var nearby_ships: Array[NPCShip] = []
+	var npc_ships = get_tree().get_nodes_in_group("npc_ships")
+	
+	for ship in npc_ships:
+		if ship == self or not is_instance_valid(ship):
+			continue
+			
+		var distance = global_position.distance_to(ship.global_position)
+		if distance <= radius:
+			nearby_ships.append(ship)
+	
+	return nearby_ships
+
+func can_communicate_with(other_ship: NPCShip) -> bool:
+	"""Check if we can communicate with another ship"""
+	# Can't communicate if either ship is busy with other social activities
+	if communication_partner != null or other_ship.communication_partner != null:
+		return false
+	
+	# Can't communicate if either ship is in hyperspace or exiting
+	if current_ai_state == AIState.HYPERSPACE_EXIT or other_ship.current_ai_state == AIState.HYPERSPACE_EXIT:
+		return false
+	
+	return true
+
+func can_form_formation_with(other_ship: NPCShip) -> bool:
+	"""Check if we can form a formation with another ship"""
+	# Can't form formations if either ship is already in a formation
+	if formation_leader != null or other_ship.formation_leader != null:
+		return false
+	
+	# Can't form formations if either ship is busy with other activities
+	if current_ai_state in [AIState.COMMUNICATING, AIState.HYPERSPACE_EXIT] or \
+	   other_ship.current_ai_state in [AIState.COMMUNICATING, AIState.HYPERSPACE_EXIT]:
+		return false
+	
+	return true
+
+func initiate_communication(other_ship: NPCShip):
+	"""Start communication with another ship"""
+	print("NPC initiating communication with another ship")
+	
+	# Set up communication for both ships
+	communication_partner = other_ship
+	other_ship.communication_partner = self
+	
+	communication_duration = randf_range(3.0, 8.0)
+	other_ship.communication_duration = communication_duration
+	
+	# Both ships meet in the middle
+	var meeting_point = (global_position + other_ship.global_position) / 2.0
+	target_position = meeting_point
+	other_ship.target_position = meeting_point
+	
+	# Transition states
+	transition_to_state(AIState.MEETING_SHIP)
+	other_ship.transition_to_state(AIState.MEETING_SHIP)
+
+func end_communication():
+	"""End communication and return to normal behavior"""
+	if communication_partner and is_instance_valid(communication_partner):
+		communication_partner.communication_partner = null
+		communication_partner.communication_timer = 0.0
+		# Partner chooses their own next action
+		if communication_partner.current_ai_state == AIState.COMMUNICATING:
+			communication_partner.transition_to_state(AIState.FLYING_TO_TARGET)
+	
+	communication_partner = null
+	communication_timer = 0.0
+	transition_to_state(AIState.FLYING_TO_TARGET)
+
+func join_formation(other_ship: NPCShip):
+	"""Join or create a formation with another ship"""
+	print("NPC joining formation with another ship")
+	
+	if other_ship.formation_leader == null:
+		# Other ship becomes the leader
+		formation_leader = other_ship
+		other_ship.formation_followers.append(self)
+		
+		# Set formation offset (to the side and slightly back)
+		formation_offset = Vector2(randf_range(-150, 150), randf_range(100, 200))
+		
+		transition_to_state(AIState.FORMATION_FLYING)
+	else:
+		# Join existing formation
+		formation_leader = other_ship.formation_leader
+		if formation_leader and is_instance_valid(formation_leader):
+			formation_leader.formation_followers.append(self)
+			
+			# Offset based on formation size
+			var formation_size = formation_leader.formation_followers.size()
+			formation_offset = Vector2(formation_size * 80.0 - 120.0, 150.0)
+			
+			transition_to_state(AIState.FORMATION_FLYING)
+
+func end_formation():
+	"""Leave formation and return to normal behavior"""
+	if formation_leader and is_instance_valid(formation_leader):
+		formation_leader.formation_followers.erase(self)
+	
+	formation_leader = null
+	formation_offset = Vector2.ZERO
+	transition_to_state(AIState.FLYING_TO_TARGET)
+
+func end_following():
+	"""Stop following and return to normal behavior"""
+	formation_leader = null
+	formation_offset = Vector2.ZERO
+	transition_to_state(AIState.FLYING_TO_TARGET)
 
 func handle_visiting_body(state):
 	"""Pause at the celestial body"""
@@ -180,7 +353,7 @@ func handle_visiting_body(state):
 		engine_particles.emitting = false
 	
 	# Safety timeout - force exit if stuck too long
-	if visit_timer >= visit_duration * 2.0:  # Double the intended duration as safety
+	if visit_timer >= visit_duration * 1.2:  # Double the intended duration as safety
 		print("NPC visit timeout - forcing exit after ", visit_timer, " seconds")
 		transition_to_state(AIState.FLYING_TO_EXIT)
 		return
@@ -207,6 +380,118 @@ func handle_flying_to_exit(state):
 	
 	# Navigate toward exit point with gentler thrust
 	navigate_to_position_relaxed(state, target_position)
+
+func handle_orbiting_body(state):
+	"""Orbit around a celestial body"""
+	if not target_celestial_body:
+		transition_to_state(AIState.FLYING_TO_EXIT)
+		return
+	
+	visit_timer += get_physics_process_delta_time()
+	orbit_angle += orbit_speed * get_physics_process_delta_time()
+	
+	# Calculate orbital position
+	var body_pos = target_celestial_body.global_position
+	var orbital_pos = body_pos + Vector2.from_angle(orbit_angle) * orbit_radius
+	
+	# Navigate to orbital position
+	navigate_to_position_relaxed(state, orbital_pos)
+	
+	# Finish orbiting after duration
+	if visit_timer >= visit_duration:
+		print("NPC finished orbiting, heading to exit")
+		transition_to_state(AIState.FLYING_TO_EXIT)
+
+func handle_meeting_ship(state):
+	"""Fly to meet another NPC for communication"""
+	if not communication_partner or not is_instance_valid(communication_partner):
+		# Partner is gone, return to normal behavior
+		transition_to_state(AIState.FLYING_TO_TARGET)
+		return
+	
+	var partner_pos = communication_partner.global_position
+	var distance_to_partner = global_position.distance_to(partner_pos)
+	
+	# Check if we've reached meeting distance
+	if distance_to_partner <= 150.0:
+		transition_to_state(AIState.COMMUNICATING)
+		return
+	
+	# Navigate toward partner
+	navigate_to_position_with_decel(state, partner_pos, 150.0)
+
+func handle_communicating(state):
+	"""Pause and communicate with another ship"""
+	communication_timer += get_physics_process_delta_time()
+	
+	# Apply gentle braking to stay near communication partner
+	if state.linear_velocity.length() > 20.0:
+		var brake_force = -state.linear_velocity.normalized() * thrust_power * 0.2
+		state.apply_central_force(brake_force)
+		engine_particles.emitting = true
+	else:
+		engine_particles.emitting = false
+	
+	# Safety timeout
+	if communication_timer >= communication_duration * 2.0:
+		print("NPC communication timeout - ending conversation")
+		end_communication()
+		return
+	
+	# Normal communication completion
+	if communication_timer >= communication_duration:
+		print("NPC finished communication after ", communication_timer, " seconds")
+		end_communication()
+
+func handle_following_ship(state):
+	"""Follow another NPC ship at a distance"""
+	if not formation_leader or not is_instance_valid(formation_leader):
+		# Leader is gone, return to normal behavior
+		transition_to_state(AIState.FLYING_TO_TARGET)
+		return
+	
+	# Calculate follow position (behind and to the side of leader)
+	var leader_pos = formation_leader.global_position
+	var leader_velocity = formation_leader.linear_velocity
+	var leader_direction = leader_velocity.normalized() if leader_velocity.length() > 10.0 else Vector2(0, -1).rotated(formation_leader.rotation)
+	
+	# Follow position is behind the leader
+	var follow_distance = 200.0
+	var follow_pos = leader_pos - leader_direction * follow_distance + formation_offset
+	
+	# Navigate to follow position
+	navigate_to_position_relaxed(state, follow_pos)
+	
+	# Stop following after some time or if leader stops moving
+	if state_timer > 30.0 or formation_leader.linear_velocity.length() < 50.0:
+		end_following()
+
+func handle_formation_flying(state):
+	"""Fly in formation with other ships"""
+	if not formation_leader or not is_instance_valid(formation_leader):
+		# Leader is gone, return to normal behavior
+		transition_to_state(AIState.FLYING_TO_TARGET)
+		return
+	
+	# Calculate formation position relative to leader
+	var leader_pos = formation_leader.global_position
+	var leader_rotation = formation_leader.rotation
+	
+	# Formation offset rotated to match leader's orientation
+	var rotated_offset = formation_offset.rotated(leader_rotation)
+	var formation_pos = leader_pos + rotated_offset
+	
+	# Navigate to formation position
+	navigate_to_position_with_decel(state, formation_pos, 50.0)
+	
+	# Match leader's rotation gradually
+	var angle_diff = angle_difference(rotation, leader_rotation)
+	if abs(angle_diff) > 0.1:
+		state.angular_velocity = sign(angle_diff) * -rotation_speed * 0.5
+	
+	# Stop formation flying after some time
+	if state_timer > 45.0:
+		end_formation()
 
 func handle_hyperspace_exit(state):
 	"""Handle hyperspace exit sequence (simplified version of player's)"""
@@ -266,7 +551,7 @@ func handle_exit_acceleration(state):
 	var current_speed = state.linear_velocity.length()
 	
 	# After acceleration, trigger flash and removal
-	if acceleration_timer >= 2.0 or current_speed >= hyperspace_entry_speed * 2:
+	if acceleration_timer >= 8.0 or current_speed >= hyperspace_entry_speed * 5:
 		hyperspace_phase = HyperspacePhase.FLASH
 		flash_timer = 0.0
 
@@ -293,13 +578,13 @@ func navigate_to_position_with_decel(state: PhysicsDirectBodyState2D, target_pos
 	var angle_diff = angle_difference(rotation, desired_rotation)
 	
 	# Smooth turning - only turn if the angle difference is significant
-	if abs(angle_diff) > 0.2:  # Larger threshold to reduce jittery movement
+	if abs(angle_diff) > 0.5:  # Larger threshold to reduce jittery movement
 		var turn_direction = sign(angle_diff) * -1
-		var turn_speed = rotation_speed * 0.7  # Slower turning for smoothness
+		var turn_speed = rotation_speed * 0.5  # Slower turning for smoothness
 		state.angular_velocity = turn_direction * turn_speed
 	else:
 		# Gradually reduce angular velocity for smoother movement
-		state.angular_velocity *= 0.8
+		state.angular_velocity *= 0.6
 	
 	# Calculate if we need to decelerate
 	var decel_distance = stop_distance * 3.0  # Start decelerating 3x the stop distance away
@@ -446,12 +731,18 @@ func transition_to_state(new_state: AIState):
 	current_ai_state = new_state
 	state_timer = 0.0
 	visit_timer = 0.0
+	communication_timer = 0.0
 	
-	# Reset hyperspace timers when entering hyperspace exit
-	if new_state == AIState.HYPERSPACE_EXIT:
-		hyperspace_timer = 0.0
-		hyperspace_phase = HyperspacePhase.DECELERATION
-		deceleration_timer = 0.0
+	# Setup state-specific variables
+	match new_state:
+		AIState.ORBITING_BODY:
+			orbit_angle = randf() * TAU  # Random starting angle
+			orbit_radius = randf_range(150.0, 250.0)  # Random orbit distance
+			orbit_speed = randf_range(0.3, 0.8)  # Random orbit speed
+		AIState.HYPERSPACE_EXIT:
+			hyperspace_timer = 0.0
+			hyperspace_phase = HyperspacePhase.DECELERATION
+			deceleration_timer = 0.0
 
 func limit_velocity(state):
 	"""Limit velocity to maximum (except during hyperspace)"""
@@ -465,6 +756,9 @@ func cleanup_and_remove():
 	"""Clean up and remove this NPC"""
 	print("NPC completing hyperspace exit and removing")
 	
+	# Clean up social relationships
+	cleanup_social_connections()
+	
 	# Notify traffic manager that this NPC is leaving (with safety check)
 	var tree = get_tree()
 	if tree:
@@ -473,6 +767,30 @@ func cleanup_and_remove():
 			traffic_manager._on_npc_removed(self)
 	
 	queue_free()
+
+func cleanup_social_connections():
+	"""Clean up all social connections before removal"""
+	# End communication
+	if communication_partner and is_instance_valid(communication_partner):
+		communication_partner.communication_partner = null
+		communication_partner.communication_timer = 0.0
+		if communication_partner.current_ai_state == AIState.COMMUNICATING:
+			communication_partner.transition_to_state(AIState.FLYING_TO_TARGET)
+	
+	# Clean up formation leadership
+	for follower in formation_followers:
+		if is_instance_valid(follower):
+			follower.formation_leader = null
+			follower.transition_to_state(AIState.FLYING_TO_TARGET)
+	
+	# Clean up formation following
+	if formation_leader and is_instance_valid(formation_leader):
+		formation_leader.formation_followers.erase(self)
+	
+	# Clear all social variables
+	communication_partner = null
+	formation_leader = null
+	formation_followers.clear()
 
 func _on_system_changed(_system_id: String):
 	"""Clean up if system changes while NPC exists"""
