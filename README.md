@@ -15,7 +15,7 @@ This guide documents the universe configuration system that powers the Gravity N
 - [Traffic System](#traffic-system)
 - [Celestial Bodies](#celestial-bodies)
 - [Planet Animations](#planet-animations)
-- [System-Wide Planet Overrides](#system-wide-planet-overrides)
+- [System Lighting Customization](#system-lighting-customization)
 - [Government System](#government-system)
 - [Complete Examples](#complete-examples)
 
@@ -292,88 +292,95 @@ Common planet shader parameters that can be animated:
 - `cloud_sharpness`: Cloud definition
 - `warp_strength`: Surface distortion
 
-## System-Wide Planet Overrides
+## System Lighting Customization
 
-Apply consistent lighting parameters to all planets within a system to simulate different star types:
+To apply consistent lighting to all planets within a system (simulating different star types), you need to modify the `apply_star_lighting` function in `scripts/CelestialBody.gd`.
 
-```json
-{
-  "name": "System Name",
-  "description": "System description",
-  "planet_overrides": {
-    "light_color": [1.0, 0.95, 0.8],
-    "light_intensity": 1.2,
-    "ambient_color": [0.4, 0.6, 1.0],
-    "ambient_light": 0.3
-  }
-}
+### Modifying CelestialBody.gd
+
+Open `scripts/CelestialBody.gd` and find the `apply_star_lighting` function (around line 120). Uncomment and modify the system-specific lighting code:
+
+```gdscript
+func apply_star_lighting(material: ShaderMaterial, system_id: String):
+	"""Apply star-type-specific lighting"""
+	match system_id:
+		"sol_system":
+			# Yellow star - warm light
+			material.set_shader_parameter("light_color", Color(1.0, 0.95, 0.8))
+			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
+			
+		"sirius_system":
+			# Blue-white star - cool bright light
+			material.set_shader_parameter("light_color", Color(0.9, 0.95, 1.0))
+			material.set_shader_parameter("light_intensity", 1.2)
+			material.set_shader_parameter("ambient_color", Color(0.6, 0.7, 1.0))
+			
+		"antares_system":
+			# Red supergiant - warm red light
+			material.set_shader_parameter("light_color", Color(1.0, 0.7, 0.5))
+			material.set_shader_parameter("ambient_color", Color(0.8, 0.4, 0.3))
+			
+		"rigel_system":
+			# Blue supergiant - intense blue-white light
+			material.set_shader_parameter("light_color", Color(0.8, 0.9, 1.0))
+			material.set_shader_parameter("light_intensity", 1.4)
+			material.set_shader_parameter("ambient_color", Color(0.5, 0.6, 1.0))
+			
+		"arcturus_system":
+			# Red giant - warm orange light
+			material.set_shader_parameter("light_color", Color(1.0, 0.8, 0.6))
+			material.set_shader_parameter("ambient_color", Color(0.7, 0.5, 0.4))
+			
+		"vega_system":
+			# Blue-white star - bright cool light
+			material.set_shader_parameter("light_color", Color(0.9, 0.9, 1.0))
+			material.set_shader_parameter("light_intensity", 1.1)
+			
+		_:
+			# Default: no overrides
+			pass
 ```
 
-### Supported Override Parameters
+### Available Lighting Parameters
 
-**`light_color` (array):** RGB values [0.0-1.0] for the star's light color
-```json
-"light_color": [1.0, 0.95, 0.8]  // Warm yellow star
-"light_color": [0.8, 0.9, 1.0]   // Cool blue star
-"light_color": [1.0, 0.7, 0.5]   // Red giant star
-```
+You can set any of these shader parameters for system-wide lighting:
 
-**`light_intensity` (float):** Brightness multiplier for the star's light
-```json
-"light_intensity": 1.0   // Normal brightness
-"light_intensity": 1.4   // Bright supergiant
-"light_intensity": 0.8   // Dim red dwarf
-```
-
-**`ambient_color` (array):** RGB values for ambient lighting color
-```json
-"ambient_color": [0.4, 0.6, 1.0]  // Cool blue ambient
-"ambient_color": [0.8, 0.4, 0.3]  // Warm red ambient
-```
-
-**`ambient_light` (float):** Ambient lighting intensity
-```json
-"ambient_light": 0.3   // Standard ambient
-"ambient_light": 0.5   // Bright ambient (multiple stars)
-"ambient_light": 0.2   // Dark ambient (distant star)
-```
+- `light_color` (Color): RGB color of the star's light
+- `light_intensity` (float): Brightness multiplier
+- `ambient_color` (Color): Color of ambient lighting
+- `ambient_light` (float): Ambient light intensity
+- `rim_light_intensity` (float): Atmospheric rim lighting
+- `rim_light_color` (Color): Color of atmospheric glow
 
 ### Star Type Examples
 
-**Yellow Main Sequence Star (Sol-type):**
-```json
-{
-  "planet_overrides": {
-    "light_color": [1.0, 0.95, 0.8],
-    "light_intensity": 1.0,
-    "ambient_color": [0.4, 0.6, 1.0],
-    "ambient_light": 0.3
-  }
-}
+**Yellow Main Sequence (Sol-type):**
+```gdscript
+material.set_shader_parameter("light_color", Color(1.0, 0.95, 0.8))
+material.set_shader_parameter("light_intensity", 1.0)
+material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
 ```
 
 **Blue Supergiant (Rigel-type):**
-```json
-{
-  "planet_overrides": {
-    "light_color": [0.8, 0.9, 1.0],
-    "light_intensity": 1.4,
-    "ambient_color": [0.5, 0.6, 1.0],
-    "ambient_light": 0.35
-  }
-}
+```gdscript
+material.set_shader_parameter("light_color", Color(0.8, 0.9, 1.0))
+material.set_shader_parameter("light_intensity", 1.4)
+material.set_shader_parameter("ambient_color", Color(0.5, 0.6, 1.0))
 ```
 
-**Red Supergiant (Antares-type):**
-```json
-{
-  "planet_overrides": {
-    "light_color": [1.0, 0.7, 0.5],
-    "light_intensity": 0.9,
-    "ambient_color": [0.8, 0.4, 0.3],
-    "ambient_light": 0.25
-  }
-}
+**Red Giant (Arcturus-type):**
+```gdscript
+material.set_shader_parameter("light_color", Color(1.0, 0.8, 0.6))
+material.set_shader_parameter("light_intensity", 0.85)
+material.set_shader_parameter("ambient_color", Color(0.7, 0.5, 0.4))
+```
+
+**Binary Star System:**
+```gdscript
+material.set_shader_parameter("light_color", Color(0.95, 0.9, 0.85))
+material.set_shader_parameter("light_intensity", 1.1)
+material.set_shader_parameter("ambient_color", Color(0.5, 0.5, 0.7))
+material.set_shader_parameter("ambient_light", 0.4)
 ```
 
 ## Government System
@@ -409,12 +416,6 @@ Define factions and their relationships:
     "description": "A wealthy commercial system",
     "flavor_text": "The brightest star in Earth's night sky hosts one of humanity's most prosperous worlds. Corporate executives and luxury merchants conduct business beneath the brilliant white light of this binary star system.",
     "connections": ["alpha_centauri", "aldebaran_system"],
-    "planet_overrides": {
-      "light_color": [0.9, 0.95, 1.0],
-      "light_intensity": 1.2,
-      "ambient_color": [0.6, 0.7, 1.0],
-      "ambient_light": 0.3
-    },
     "starfield": {
       "BaseColor": [0.1, 0.1, 0.15],
       "StarLayers_Star_Density": 0.8,
