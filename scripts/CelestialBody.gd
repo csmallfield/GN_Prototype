@@ -102,10 +102,12 @@ func apply_system_variations(material: ShaderMaterial):
 func apply_star_lighting(material: ShaderMaterial, system_id: String):
 	"""Apply star-type-specific lighting"""
 	match system_id:
-		#"sol_system":
-			# Yellow star - warm light
-			#material.set_shader_parameter("light_color", Color(1.0, 0.95, 0.8))
-			#material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
+		"sol_system":
+			#Yellow star - warm light
+			material.set_shader_parameter("light_color", Color(0.921, 0.594, 0.674))
+			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
+			material.set_shader_parameter("light_intensity", 1.4)
+			
 			
 		#"sirius_system":
 			# Blue-white star - cool bright light
