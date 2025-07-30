@@ -135,33 +135,14 @@ func handle_deceleration_phase(state):
 func handle_rotation_phase(state):
 	"""Phase 2: Rotate to face the destination system"""
 	rotation_timer += get_physics_process_delta_time()
-	
 	var angle_diff = angle_difference(rotation, target_rotation)
-	var rotation_threshold = 0.1  # About 6 degrees
 	
-	# Timeout check
-	if rotation_timer > 1.0:
-		print("Rotation timeout - continuing to acceleration")
-		state.angular_velocity = 0.0
-		hyperspace_phase = HyperspacePhase.ACCELERATION
-		acceleration_timer = 0.0
-		return
-	
-	if abs(angle_diff) > rotation_threshold:
-		# Smooth rotation with damping
-		var turn_speed = rotation_speed * 1.5
-		var desired_angular_velocity = sign(angle_diff) * -turn_speed
-		
-		# Add damping as we get closer
-		var damping_factor = min(abs(angle_diff) / 0.5, 1.0)
-		state.angular_velocity = desired_angular_velocity * damping_factor
-		
-		print("Rotating... Angle diff: ", rad_to_deg(angle_diff), " degrees")
+	if abs(angle_diff) > 0.1 and rotation_timer < 1.0:
+		var turn_speed = rotation_speed * 2.0
+		state.angular_velocity = sign(angle_diff) * -turn_speed
 	else:
-		# Rotation complete
-		print("Rotation complete, starting acceleration")
 		state.angular_velocity = 0.0
-		rotation = target_rotation  # Snap to exact angle
+		rotation = target_rotation
 		hyperspace_phase = HyperspacePhase.ACCELERATION
 		acceleration_timer = 0.0
 
@@ -335,6 +316,13 @@ func _input(event):
 		interact_with_target()
 	elif event.is_action_pressed("hyperspace"):
 		open_hyperspace_menu()
+	elif event.is_action_pressed("land"):
+		# Remove current_target requirement - attempt_landing() will find nearby planets
+		attempt_landing()
+	
+	# Debug: Test mission system (remove this later)
+	if OS.is_debug_build() and event.is_action_pressed("ui_accept"):  # Enter key
+		debug_test_mission_system()
 
 func interact_with_target():
 	if current_target.has_method("interact"):
@@ -344,6 +332,164 @@ func open_hyperspace_menu():
 	var ui = get_tree().get_first_node_in_group("ui")
 	if ui and ui.has_method("show_hyperspace_menu"):
 		ui.show_hyperspace_menu()
+
+func attempt_landing():
+	"""Attempt to land on the current target (placeholder for Stage 2)"""
+	var current_speed = linear_velocity.length()
+	var max_landing_speed = 150.0  # Reasonable landing speed - not too strict
+	
+	print("=== LANDING ATTEMPT ===")
+	print("Current speed: ", current_speed)
+	print("Max landing speed: ", max_landing_speed)
+	print("Current target: ", current_target.celestial_data.get("name", "Unknown") if current_target else "None")
+	
+	# Check if we have a target
+	if not current_target:
+		# Try to find a nearby landable planet manually
+		var nearby_planet = find_nearby_landable_planet()
+		if nearby_planet:
+			print("Found nearby landable planet: ", nearby_planet.celestial_data.get("name", "Unknown"))
+			current_target = nearby_planet
+		else:
+			print("❌ No landable planet nearby")
+			return
+	
+	# Check if target can be landed on
+	if not current_target.has_method("can_interact") or not current_target.can_interact():
+		print("❌ Cannot land on this target: ", current_target.celestial_data.get("name", "Unknown"))
+		return
+	
+	# Check speed requirement
+	if current_speed > max_landing_speed:
+		print("❌ Moving too fast to land! Slow down to under ", max_landing_speed, " units/sec")
+		print("   (Current speed: ", round(current_speed), ")")
+		return
+	
+	# All checks passed - show landing interface
+	print("✅ Landing conditions met!")
+	show_planet_landing_ui()
+
+func show_planet_landing_ui():
+	"""Show the planet landing user interface"""
+	var ui_controller = get_tree().get_first_node_in_group("ui")
+	if not ui_controller:
+		print("❌ Could not find UI controller")
+		return
+	
+	# Get or create the landing UI
+	var landing_ui = ui_controller.get_node_or_null("PlanetLandingUI")
+	if not landing_ui:
+		# Create the landing UI
+		var landing_ui_scene = load("res://scenes/PlanetLandingUI.tscn")
+		if not landing_ui_scene:
+			print("❌ Could not load PlanetLandingUI.tscn")
+			return
+		
+		landing_ui = landing_ui_scene.instantiate()
+		landing_ui.name = "PlanetLandingUI"
+		ui_controller.add_child(landing_ui)
+		print("Created PlanetLandingUI")
+	
+	# Show the landing interface with current planet data
+	var planet_data = current_target.celestial_data
+	var system_id = UniverseManager.current_system_id
+	
+	landing_ui.show_landing_interface(planet_data, system_id)
+	print("✅ Planet landing UI displayed")
+
+func find_nearby_landable_planet() -> Node:
+	"""Find a landable planet within reasonable distance"""
+	var search_radius = 300.0  # Generous search radius
+	var system_scene = get_tree().get_first_node_in_group("system_scene")
+	if not system_scene:
+		return null
+	
+	var celestial_container = system_scene.get_node_or_null("CelestialBodies")
+	if not celestial_container:
+		return null
+	
+	var closest_planet = null
+	var closest_distance = search_radius
+	
+	for body in celestial_container.get_children():
+		if body.has_method("can_interact") and body.can_interact():
+			var distance = global_position.distance_to(body.global_position)
+			print("Distance to ", body.celestial_data.get("name", "Unknown"), ": ", round(distance))
+			
+			if distance < closest_distance:
+				closest_distance = distance
+				closest_planet = body
+	
+	if closest_planet:
+		print("Closest landable planet: ", closest_planet.celestial_data.get("name", "Unknown"), " at distance ", round(closest_distance))
+	else:
+		print("No landable planets within ", search_radius, " units")
+	
+	return closest_planet
+
+func check_for_deliveries():
+	"""Check if player has missions to deliver to this planet"""
+	var planet_id = current_target.celestial_data.get("id", "")
+	var system_id = UniverseManager.current_system_id
+	
+	var delivery_mission = PlayerData.has_active_mission_to_planet(planet_id, system_id)
+	if not delivery_mission.is_empty():
+		print("🎉 DELIVERY COMPLETED!")
+		print("Delivered: ", delivery_mission.get("cargo_type", "Unknown Cargo"))
+		print("Payment: ", delivery_mission.get("payment", 0), " credits")
+		
+		# Complete the mission
+		var mission_id = delivery_mission.get("id", "")
+		if mission_id != "":
+			PlayerData.complete_mission(mission_id)
+		
+		print("✅ Mission completed successfully!")
+	else:
+		print("No deliveries for this location")
+
+func show_available_missions():
+	"""Show missions available for pickup at this planet"""
+	var planet_id = current_target.celestial_data.get("id", "")
+	if planet_id != "":
+		var missions = UniverseManager.get_missions_for_planet(planet_id)
+		print("📦 Available missions at this location: ", missions.size())
+		
+		if missions.size() > 0:
+			print("Available cargo missions:")
+			for i in range(missions.size()):
+				var mission = missions[i]
+				print("  ", i + 1, ". ", MissionGenerator.get_mission_description(mission))
+			print("(Mission selection UI will be implemented in Stage 2)")
+		else:
+			print("No missions available at this location")
+	print("=== END LANDING ===")
+
+func debug_test_mission_system():
+	"""Debug method to test mission system foundation (remove later)"""
+	print("=== TESTING MISSION SYSTEM FOUNDATION ===")
+	
+	# Test PlayerData
+	print("Testing PlayerData...")
+	PlayerData.debug_print_status()
+	
+	# Test MissionGenerator
+	print("Testing MissionGenerator...")
+	MissionGenerator.debug_print_all_destinations()
+	
+	# Test system missions
+	print("Testing current system missions...")
+	var current_system = UniverseManager.get_current_system()
+	print("Current system: ", current_system.get("name", "Unknown"))
+	
+	# Get missions for Earth (if we're in Sol system)
+	if UniverseManager.current_system_id == "sol_system":
+		var earth_missions = UniverseManager.get_missions_for_planet("earth")
+		print("Earth has ", earth_missions.size(), " missions:")
+		for mission in earth_missions:
+			print("  - ", MissionGenerator.get_mission_description(mission))
+	
+	print("=== MISSION SYSTEM TEST COMPLETE ===")
+	print("Press Enter again to test, L to land on planets when implemented")
 
 func _on_interaction_area_entered(body):
 	if body.has_method("can_interact") and body.can_interact():

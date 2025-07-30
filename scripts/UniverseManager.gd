@@ -11,6 +11,9 @@ var current_system_id: String = ""
 var universe_data: Dictionary = {}
 var player_ship: Node = null
 
+# Mission system integration
+var current_system_missions: Dictionary = {}  # planet_id -> Array[mission_data]
+
 func _ready():
 	load_universe_data()
 	change_system("sol_system")  # Starting system
@@ -32,10 +35,46 @@ func load_universe_data():
 func change_system(system_id: String):
 	if system_id in universe_data.systems:
 		current_system_id = system_id
+		
+		# Generate missions for all planets in the new system
+		generate_system_missions()
+		
 		system_changed.emit(system_id)
 		print("Entered system: ", system_id)
 	else:
 		push_error("System not found: " + system_id)
+
+func generate_system_missions():
+	"""Generate cargo missions for all landable planets in the current system"""
+	current_system_missions.clear()
+	
+	var system_data = get_current_system()
+	if system_data.is_empty():
+		return
+	
+	var celestial_bodies = system_data.get("celestial_bodies", [])
+	var mission_count = 0
+	
+	print("=== Generating missions for ", system_data.get("name", current_system_id), " ===")
+	
+	for body in celestial_bodies:
+		# Only generate missions for landable planets/stations
+		if body.get("can_land", false):
+			var planet_id = body.get("id", "")
+			var missions = MissionGenerator.generate_missions_for_planet(body, current_system_id)
+			
+			if not missions.is_empty():
+				current_system_missions[planet_id] = missions
+				mission_count += missions.size()
+				print("Generated ", missions.size(), " missions for ", body.get("name", planet_id))
+	
+	print("=== Total missions generated: ", mission_count, " ===")
+
+func get_missions_for_planet(planet_id: String) -> Array[Dictionary]:
+	"""Get available cargo missions for a specific planet"""
+	if current_system_missions.has(planet_id):
+		return current_system_missions[planet_id].duplicate()
+	return []
 
 func get_current_system() -> Dictionary:
 	if current_system_id in universe_data.systems:

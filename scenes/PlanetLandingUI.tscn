@@ -1,0 +1,121 @@
+[gd_scene load_steps=3 format=3 uid="uid://dpsm0115urevd"]
+
+[ext_resource type="Script" uid="uid://cso3regcuplof" path="res://scripts/PlanetLandingUI.gd" id="1_8rtmu"]
+[ext_resource type="StyleBox" uid="uid://bwupa2pkqwuwy" path="res://styles/PlanetLandingUI.tres" id="2_teb1l"]
+
+[node name="PlanetLandingUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_8rtmu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.8)
+
+[node name="MainContainer" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LeftPanel" type="Panel" parent="MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.5
+theme_override_styles/panel = ExtResource("2_teb1l")
+
+[node name="PlanetImage" type="TextureRect" parent="MainContainer/LeftPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="RightPanel" type="VBoxContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="InfoPanel" type="Panel" parent="MainContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.2
+theme_override_styles/panel = ExtResource("2_teb1l")
+
+[node name="InfoContainer" type="VBoxContainer" parent="MainContainer/RightPanel/InfoPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="PlanetName" type="Label" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 32
+text = "Planet Name
+"
+horizontal_alignment = 1
+
+[node name="FlavorText" type="Label" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "Flavor text would go here to describe the planet, the flora and fauna one would find and the types of patrons and citizens one would meet if they were to visit the Spica System or any other system one would select on the main map.\\n\\nIt should be somewhat brief but informative"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="ButtonPanel" type="Panel" parent="MainContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("2_teb1l")
+
+[node name="ButtonContainer" type="VBoxContainer" parent="MainContainer/RightPanel/ButtonPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="ShippingMissionsButton" type="Button" parent="MainContainer/RightPanel/ButtonPanel/ButtonContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "Shipping Missions"
+
+[node name="LeavePlanetButton" type="Button" parent="MainContainer/RightPanel/ButtonPanel/ButtonContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "Leave Planet"

@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://bxvy6rfv2kbi4"]
+[gd_scene load_steps=6 format=3 uid="uid://bxvy6rfv2kbi4"]
 
 [ext_resource type="PackedScene" uid="uid://bs2vv8mki25h1" path="res://scenes/SystemScene.tscn" id="1_rvslj"]
 [ext_resource type="PackedScene" uid="uid://el1ywym68otq" path="res://scenes/PlayerShip.tscn" id="2_0bbpv"]
 [ext_resource type="Script" uid="uid://uojwd2ka5uy1" path="res://scripts/UIController.gd" id="3_0bbpv"]
 [ext_resource type="PackedScene" uid="uid://dx1xspawun6rt" path="res://scenes/HyperspaceMap.tscn" id="4_rarhs"]
+[ext_resource type="PackedScene" uid="uid://dpsm0115urevd" path="res://scenes/PlanetLandingUI.tscn" id="5_vcsgt"]
 
 [node name="Main" type="Node2D"]
 
@@ -32,3 +33,6 @@ offset_right = 0.0
 offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="PlanetLandingUI" parent="UI/UIController" instance=ExtResource("5_vcsgt")]
+layout_mode = 1
