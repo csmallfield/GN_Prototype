@@ -38,7 +38,7 @@ grow_vertical = 2
 [node name="LeftPanel" type="Panel" parent="MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.8
+size_flags_stretch_ratio = 3.0
 theme_override_styles/panel = ExtResource("2_teb1l")
 
 [node name="PlanetImage" type="TextureRect" parent="MainContainer/LeftPanel"]
@@ -63,7 +63,7 @@ theme_override_constants/separation = 10
 [node name="InfoPanel" type="Panel" parent="MainContainer/RightPanel"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.2
+size_flags_stretch_ratio = 2.7
 theme_override_styles/panel = ExtResource("2_teb1l")
 
 [node name="InfoContainer" type="VBoxContainer" parent="MainContainer/RightPanel/InfoPanel"]
@@ -94,7 +94,6 @@ size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
 theme_override_font_sizes/font_size = 16
 text = "Flavor text would go here to describe the planet, the flora and fauna one would find and the types of patrons and citizens one would meet if they were to visit the Spica System or any other system one would select on the main map.\\n\\nIt should be somewhat brief but informative"
-vertical_alignment = 1
 autowrap_mode = 3
 
 [node name="ButtonPanel" type="Panel" parent="MainContainer/RightPanel"]
