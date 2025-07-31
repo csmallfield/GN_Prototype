@@ -1,0 +1,94 @@
+[gd_scene load_steps=3 format=3 uid="uid://2bgedqw4o2j7"]
+
+[ext_resource type="Script" uid="uid://c8bcmeaq7clmh" path="res://scripts/MissionLogUI.gd" id="1_pbux1"]
+[ext_resource type="StyleBox" uid="uid://bwupa2pkqwuwy" path="res://styles/PlanetLandingUI.tres" id="2_cqc4w"]
+
+[node name="MissionLogUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_pbux1")
+
+[node name="MainPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -300.0
+offset_bottom = 300.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("2_cqc4w")
+
+[node name="MainContainer" type="VBoxContainer" parent="MainPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 15
+
+[node name="HeaderLabel" type="Label" parent="MainPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "MISSION LOG"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="MainPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "Credits: 50,000 | Cargo: 0/100 tons"
+horizontal_alignment = 1
+
+[node name="ActiveMissionsHeader" type="Label" parent="MainPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "═══ ACTIVE MISSIONS ═══"
+horizontal_alignment = 1
+
+[node name="ActiveMissionScroll" type="ScrollContainer" parent="MainPanel/MainContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="ActiveMissionsList" type="VBoxContainer" parent="MainPanel/MainContainer/ActiveMissionScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="CompletedMissionsLabel" type="Label" parent="MainPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "═══ COMPLETED MISSIONS ═══"
+horizontal_alignment = 1
+
+[node name="CompletedMissionsScroll" type="ScrollContainer" parent="MainPanel/MainContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CompletedMissionsList" type="VBoxContainer" parent="MainPanel/MainContainer/CompletedMissionsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="InstructionsLabel" type="Label" parent="MainPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 12
+text = "Press M of ESC to Close"
+horizontal_alignment = 1

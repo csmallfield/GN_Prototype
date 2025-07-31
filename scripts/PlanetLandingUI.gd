@@ -5,19 +5,11 @@
 extends Control
 class_name PlanetLandingUI
 
-#@onready var planet_image = $MainContainer/LeftPanel/PlanetImage
-#@onready var planet_name_label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
-#@onready var flavor_text_label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
-#@onready var shipping_missions_button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
-#@onready var leave_planet_button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
 @onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
 @onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
 @onready var flavor_text_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
 @onready var planet_name_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
 @onready var planet_image: TextureRect = $MainContainer/LeftPanel/PlanetImage
-
-
-
 
 # Current planet data
 var current_planet_data: Dictionary = {}
@@ -68,8 +60,8 @@ func setup_planet_display():
 	# Load planet surface image
 	load_planet_surface_image(planet_id)
 	
-	# Set flavor text
-	set_planet_flavor_text()
+	# Set flavor text with player status
+	set_planet_flavor_text_with_status()
 
 func load_planet_surface_image(planet_id: String):
 	"""Load the planet surface image with fallback"""
@@ -109,10 +101,28 @@ func create_fallback_image():
 	planet_image.texture = fallback_image
 	print("Created fallback gradient image")
 
-func set_planet_flavor_text():
-	"""Set the flavor text for the planet"""
+func set_planet_flavor_text_with_status():
+	"""Set the flavor text with player status information"""
+	# Get planet flavor text
+	var flavor_text = get_planet_flavor_text()
+	
+	# Add player status
+	var credits = PlayerData.get_credits()
+	var cargo_space = PlayerData.current_cargo_weight
+	var cargo_capacity = PlayerData.cargo_capacity
+	var active_missions = PlayerData.get_active_missions().size()
+	
+	var status_text = "\n\n═══ PILOT STATUS ═══\n"
+	status_text += "Credits: %s\n" % MissionGenerator.format_credits(credits)
+	status_text += "Cargo: %d/%d tons\n" % [cargo_space, cargo_capacity]
+	status_text += "Active Missions: %d" % active_missions
+	
+	flavor_text_label.text = flavor_text + status_text
+
+func get_planet_flavor_text() -> String:
+	"""Get the flavor text for the planet"""
 	var planet_id = current_planet_data.get("id", "")
-	var planet_name = current_planet_data.get("name", "Unknown Planet")
+	var _planet_name = current_planet_data.get("name", "Unknown Planet")
 	
 	# Try to get custom flavor text from planet data
 	var flavor_text = current_planet_data.get("flavor_text", "")
@@ -121,7 +131,7 @@ func set_planet_flavor_text():
 	if flavor_text == "":
 		flavor_text = generate_default_flavor_text()
 	
-	flavor_text_label.text = flavor_text
+	return flavor_text
 
 func generate_default_flavor_text() -> String:
 	"""Generate basic flavor text based on planet properties"""
@@ -212,28 +222,64 @@ func _on_shipping_missions_pressed():
 	print("Found ", missions.size(), " missions for ", current_planet_data.get("name", "Unknown"))
 	
 	if missions.size() > 0:
-		# Show mission selection interface (will be implemented next)
-		show_mission_selection(missions)
+		# Show mission selection interface
+		show_mission_selection_interface(missions)
 	else:
 		print("No missions available at this location")
-		# Could show a "No missions available" popup
+		# TODO: Could show a "No missions available" popup later
 
-func show_mission_selection(missions: Array[Dictionary]):
-	"""Show the mission selection interface (placeholder for now)"""
-	print("=== AVAILABLE MISSIONS ===")
-	for i in range(missions.size()):
-		var mission = missions[i]
-		print(i + 1, ". ", MissionGenerator.get_mission_description(mission))
-	print("=== END MISSIONS ===")
-	print("(Mission selection UI will be implemented next)")
+func show_mission_selection_interface(missions: Array[Dictionary]):
+	"""Show the mission selection interface"""
+	# Get or create the mission selection UI
+	var ui_controller = get_parent()  # Should be UIController
+	var mission_selection_ui = ui_controller.get_node_or_null("MissionSelectionUI")
 	
-	# Placeholder: Auto-accept first mission for testing
-	if missions.size() > 0:
-		var test_mission = missions[0]
-		if PlayerData.accept_mission(test_mission):
-			print("✅ Accepted mission: ", test_mission.get("cargo_type", "Unknown"))
-		else:
-			print("❌ Cannot accept mission (insufficient cargo space)")
+	if not mission_selection_ui:
+		# Create the mission selection UI
+		var mission_ui_scene = load("res://scenes/MissionSelectionUI.tscn")
+		if not mission_ui_scene:
+			print("❌ Could not load MissionSelectionUI.tscn")
+			return
+		
+		mission_selection_ui = mission_ui_scene.instantiate()
+		mission_selection_ui.name = "MissionSelectionUI"
+		ui_controller.add_child(mission_selection_ui)
+		
+		# Connect signals
+		mission_selection_ui.mission_accepted.connect(_on_mission_accepted)
+		mission_selection_ui.back_to_planet_requested.connect(_on_back_to_planet_requested)
+		
+		print("Created MissionSelectionUI")
+	
+	# Hide this interface temporarily
+	visible = false
+	
+	# Show mission selection
+	mission_selection_ui.show_mission_selection(current_planet_data, current_system_id, missions)
+
+func _on_mission_accepted(mission_data: Dictionary):
+	"""Handle mission acceptance from mission selection UI"""
+	print("Mission accepted: ", mission_data.get("cargo_type", "Unknown"))
+	
+	# Show confirmation (for now just print, could add a nice popup later)
+	var cargo_type = mission_data.get("cargo_type", "Unknown Cargo")
+	var cargo_weight = mission_data.get("cargo_weight", 0)
+	var _payment = mission_data.get("payment", 0)
+	
+	print("✅ MISSION ACCEPTED!")
+	print("Cargo: ", cargo_type, " (", cargo_weight, " tons)")
+	print("Current cargo space: ", PlayerData.current_cargo_weight, "/", PlayerData.cargo_capacity)
+	
+	# Refresh the planet display to show updated status
+	setup_planet_display()
+	
+	# Return to planet interface
+	visible = true
+
+func _on_back_to_planet_requested():
+	"""Handle return to planet from mission selection"""
+	print("Returning to planet interface")
+	visible = true
 
 func _on_leave_planet_pressed():
 	"""Handle leave planet button press"""

@@ -319,6 +319,9 @@ func _input(event):
 	elif event.is_action_pressed("land"):
 		# Remove current_target requirement - attempt_landing() will find nearby planets
 		attempt_landing()
+	elif event.is_action_pressed("mission_log"):
+		# Toggle mission log
+		toggle_mission_log()
 	
 	# Debug: Test mission system (remove this later)
 	if OS.is_debug_build() and event.is_action_pressed("ui_accept"):  # Enter key
@@ -332,6 +335,30 @@ func open_hyperspace_menu():
 	var ui = get_tree().get_first_node_in_group("ui")
 	if ui and ui.has_method("show_hyperspace_menu"):
 		ui.show_hyperspace_menu()
+
+func toggle_mission_log():
+	"""Toggle the mission log interface"""
+	var ui_controller = get_tree().get_first_node_in_group("ui")
+	if not ui_controller:
+		print("❌ Could not find UI controller for mission log")
+		return
+	
+	# Get or create the mission log UI
+	var mission_log_ui = ui_controller.get_node_or_null("MissionLogUI")
+	if not mission_log_ui:
+		# Create the mission log UI
+		var mission_log_scene = load("res://scenes/MissionLogUI.tscn")
+		if not mission_log_scene:
+			print("❌ Could not load MissionLogUI.tscn")
+			return
+		
+		mission_log_ui = mission_log_scene.instantiate()
+		mission_log_ui.name = "MissionLogUI"
+		ui_controller.add_child(mission_log_ui)
+		print("Created MissionLogUI")
+	
+	# Toggle the mission log
+	mission_log_ui.toggle_mission_log()
 
 func attempt_landing():
 	"""Attempt to land on the current target (placeholder for Stage 2)"""
