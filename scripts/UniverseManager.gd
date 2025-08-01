@@ -92,3 +92,25 @@ func can_travel_to_system(system_id: String) -> bool:
 	var current_system = get_current_system()
 	var connections = current_system.get("connections", [])
 	return system_id in connections
+
+# Add this new function to UniverseManager.gd
+
+func remove_mission_from_system(planet_id: String, mission_data: Dictionary):
+	"""Remove an accepted mission from the current system's available missions"""
+	if current_system_missions.has(planet_id):
+		var planet_missions = current_system_missions[planet_id]
+		
+		# Find and remove the mission by comparing cargo type, weight, and destination
+		for i in range(planet_missions.size() - 1, -1, -1):
+			var mission = planet_missions[i]
+			if (mission.get("cargo_type") == mission_data.get("cargo_type") and
+				mission.get("cargo_weight") == mission_data.get("cargo_weight") and
+				mission.get("destination_planet") == mission_data.get("destination_planet") and
+				mission.get("destination_system") == mission_data.get("destination_system")):
+				
+				planet_missions.remove_at(i)
+				print("Removed mission from available list: ", mission_data.get("cargo_type"), " to ", mission_data.get("destination_planet_name"))
+				break
+		
+		# Update the stored missions
+		current_system_missions[planet_id] = planet_missions

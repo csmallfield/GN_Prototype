@@ -84,6 +84,8 @@ func remove_cargo(weight: int):
 # MISSION MANAGEMENT
 # =============================================================================
 
+# Replace the accept_mission function in PlayerData.gd with this updated version:
+
 func accept_mission(mission_data: Dictionary) -> bool:
 	"""Accept a new mission if player has cargo space"""
 	var cargo_weight = mission_data.get("cargo_weight", 0)
@@ -100,6 +102,11 @@ func accept_mission(mission_data: Dictionary) -> bool:
 	# Add cargo weight and mission to active list
 	add_cargo(cargo_weight)
 	active_missions.append(mission_data)
+	
+	# Remove mission from available missions in the current system
+	var origin_planet = mission_data.get("origin_planet", "")
+	if origin_planet != "":
+		UniverseManager.remove_mission_from_system(origin_planet, mission_data)
 	
 	mission_accepted.emit(mission_data)
 	print("Mission accepted: ", mission_data.get("cargo_type", "Unknown"), " to ", mission_data.get("destination_planet", "Unknown"))
