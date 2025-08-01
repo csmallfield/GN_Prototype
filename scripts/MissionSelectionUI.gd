@@ -179,12 +179,45 @@ func _on_accept_mission_pressed():
 		# Emit signal to notify planet UI
 		mission_accepted.emit(selected_mission)
 		
-		# Close mission selection interface
-		hide_mission_selection()
+		# Remove the accepted mission from available missions
+		remove_accepted_mission_from_list()
+		
+		# Refresh the mission list and clear selection
+		refresh_mission_interface()
+		
 	else:
 		print("❌ Failed to accept mission")
 		# Update details to show why it failed
 		update_mission_details()
+
+func remove_accepted_mission_from_list():
+	"""Remove the accepted mission from the available missions array"""
+	for i in range(available_missions.size() - 1, -1, -1):
+		var mission = available_missions[i]
+		# Compare missions by their key properties to find the match
+		if (mission.get("cargo_type") == selected_mission.get("cargo_type") and
+			mission.get("cargo_weight") == selected_mission.get("cargo_weight") and
+			mission.get("destination_planet") == selected_mission.get("destination_planet") and
+			mission.get("destination_system") == selected_mission.get("destination_system") and
+			mission.get("payment") == selected_mission.get("payment")):
+			
+			available_missions.remove_at(i)
+			print("Removed accepted mission from available list")
+			break
+
+func refresh_mission_interface():
+	"""Refresh the mission list and clear selection after accepting a mission"""
+	# Clear current selection
+	selected_mission = {}
+	selected_mission_button = null
+	
+	# Recreate the mission list
+	create_mission_list()
+	
+	# Update the details panel
+	update_mission_details()
+	
+	print("Mission interface refreshed - ", available_missions.size(), " missions remaining")
 
 func _on_back_button_pressed():
 	"""Handle back button press"""
