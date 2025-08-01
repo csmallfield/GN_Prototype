@@ -257,8 +257,12 @@ func show_delivery_completion(mission_data: Dictionary):
 	add_child(popup)
 	popup.popup_centered()
 	
-	# Clean up when closed
-	popup.confirmed.connect(func(): popup.queue_free())
+	# Clean up when closed and refresh the planet display
+	popup.confirmed.connect(func(): 
+		popup.queue_free()
+		# Refresh the planet display to show updated cargo/credits
+		setup_planet_display()
+	)
 	
 	print("🎉 DELIVERY COMPLETED: ", cargo_type, " - ", payment, " credits")
 
