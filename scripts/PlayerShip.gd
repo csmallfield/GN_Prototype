@@ -361,25 +361,23 @@ func toggle_mission_log():
 	mission_log_ui.toggle_mission_log()
 
 func attempt_landing():
-	"""Attempt to land on the current target (placeholder for Stage 2)"""
+	"""Attempt to land on the nearest landable planet"""
 	var current_speed = linear_velocity.length()
 	var max_landing_speed = 150.0  # Reasonable landing speed - not too strict
 	
 	print("=== LANDING ATTEMPT ===")
 	print("Current speed: ", current_speed)
 	print("Max landing speed: ", max_landing_speed)
-	print("Current target: ", current_target.celestial_data.get("name", "Unknown") if current_target else "None")
 	
-	# Check if we have a target
-	if not current_target:
-		# Try to find a nearby landable planet manually
-		var nearby_planet = find_nearby_landable_planet()
-		if nearby_planet:
-			print("Found nearby landable planet: ", nearby_planet.celestial_data.get("name", "Unknown"))
-			current_target = nearby_planet
-		else:
-			print("❌ No landable planet nearby")
-			return
+	# ALWAYS search for the nearest landable planet - don't rely on cached current_target
+	var nearby_planet = find_nearby_landable_planet()
+	if not nearby_planet:
+		print("❌ No landable planet nearby")
+		return
+	
+	# Update current_target to the nearest planet
+	current_target = nearby_planet
+	print("Current target: ", current_target.celestial_data.get("name", "Unknown"))
 	
 	# Check if target can be landed on
 	if not current_target.has_method("can_interact") or not current_target.can_interact():
