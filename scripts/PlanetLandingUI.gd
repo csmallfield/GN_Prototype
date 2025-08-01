@@ -202,14 +202,65 @@ func check_for_deliveries():
 func show_delivery_completion(mission_data: Dictionary):
 	"""Show a delivery completion popup"""
 	var cargo_type = mission_data.get("cargo_type", "Unknown Cargo")
+	var cargo_weight = mission_data.get("cargo_weight", 0)
 	var payment = mission_data.get("payment", 0)
 	
-	# Create a simple notification (for now, just print - could be enhanced with a popup later)
-	print("🎉 DELIVERY COMPLETED!")
-	print("Cargo: ", cargo_type)
-	print("Payment: ", payment, " credits")
+	# Create main popup
+	var popup = AcceptDialog.new()
+	popup.title = "DELIVERY COMPLETED"
+	popup.size = Vector2(500, 300)
 	
-	# TODO: Could add a nice popup animation here later
+	# Create custom content
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 15)
+	
+	# Header
+	var header = Label.new()
+	header.text = "✅ SHIPMENT SUCCESSFULLY DELIVERED"
+	header.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+	header.add_theme_font_size_override("font_size", 20)
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Separator
+	var separator = HSeparator.new()
+	separator.add_theme_color_override("separator", Color(0, 0.8, 0, 1))
+	vbox.add_child(separator)
+	
+	# Details
+	var details = Label.new()
+	var details_text = "Cargo: %s\n" % cargo_type
+	details_text += "Weight: %d tons\n\n" % cargo_weight
+	details_text += "Payment: %s credits\n\n" % MissionGenerator.format_credits(payment)
+	details_text += "Credits have been transferred to your account."
+	
+	details.text = details_text
+	details.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+	details.add_theme_font_size_override("font_size", 16)
+	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(details)
+	
+	# Add content to popup
+	popup.add_child(vbox)
+	
+	# Style the popup background
+	var style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0, 0.1, 0, 0.95)  # Dark green background
+	style_box.border_color = Color(0, 1, 0, 1)   # Green border
+	style_box.border_width_left = 2
+	style_box.border_width_right = 2
+	style_box.border_width_top = 2
+	style_box.border_width_bottom = 2
+	popup.add_theme_stylebox_override("panel", style_box)
+	
+	# Add to scene and show
+	add_child(popup)
+	popup.popup_centered()
+	
+	# Clean up when closed
+	popup.confirmed.connect(func(): popup.queue_free())
+	
+	print("🎉 DELIVERY COMPLETED: ", cargo_type, " - ", payment, " credits")
 
 func _on_shipping_missions_pressed():
 	"""Handle shipping missions button press"""
