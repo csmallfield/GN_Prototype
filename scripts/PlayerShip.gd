@@ -139,7 +139,7 @@ func handle_rotation_phase(state):
 	
 	if abs(angle_diff) > 0.1 and rotation_timer < 1.0:
 		var turn_speed = rotation_speed * 2.0
-		state.angular_velocity = sign(angle_diff) * -turn_speed
+		state.angular_velocity = sign(angle_diff) * turn_speed
 	else:
 		state.angular_velocity = 0.0
 		rotation = target_rotation
@@ -262,7 +262,7 @@ func calculate_target_rotation():
 		
 		# Convert to rotation (ship faces up by default, which is -Y direction)
 		# So we need to subtract PI/2 instead of adding it
-		target_rotation = map_direction.angle() - PI/2
+		target_rotation = map_direction.angle() + PI/2
 		
 		print("Direction to ", hyperspace_destination, ": ", map_direction)
 		print("Target rotation: ", rad_to_deg(target_rotation), " degrees")
