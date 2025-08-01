@@ -28,16 +28,17 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -600.0
-offset_top = -300.0
-offset_right = 600.0
-offset_bottom = 300.0
+offset_left = -640.0
+offset_top = -360.0
+offset_right = 640.0
+offset_bottom = 360.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="LeftPanel" type="Panel" parent="MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
 theme_override_styles/panel = ExtResource("2_uxian")
 
 [node name="MissionListContainer" type="VBoxContainer" parent="MainContainer/LeftPanel"]
@@ -92,6 +93,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0, 100, 0, 1)
 theme_override_font_sizes/font_size = 24
 text = "Mission Deails"
+horizontal_alignment = 1
 
 [node name="MissionDetailsText" type="Label" parent="MainContainer/RightPanel/MissionDetailsContainer"]
 custom_minimum_size = Vector2(300, 0)
