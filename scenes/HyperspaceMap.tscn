@@ -1,63 +1,115 @@
-[gd_scene load_steps=4 format=3 uid="uid://dx1xspawun6rt"]
+[gd_scene load_steps=3 format=3 uid="uid://dx1xspawun6rt"]
 
 [ext_resource type="Script" uid="uid://din31j8ene7cm" path="res://scripts/HyperspaceMap.gd" id="1_8ufwo"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g0xmr"]
-bg_color = Color(0, 0, 0, 0.52549)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8ufwo"]
-bg_color = Color(0, 0, 0, 0.52549)
+[ext_resource type="StyleBox" uid="uid://bwupa2pkqwuwy" path="res://styles/PlanetLandingUI.tres" id="2_g0xmr"]
 
 [node name="HyperspaceMap" type="Control"]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 800.0
-offset_bottom = 600.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_8ufwo")
 
-[node name="InfoPanel" type="Panel" parent="."]
+[node name="Background" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 500.0
-offset_top = 450.0
-offset_right = 800.0
-offset_bottom = 600.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_g0xmr")
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0, 0, 0, 0.8)
 
-[node name="VBox" type="VBoxContainer" parent="InfoPanel"]
+[node name="MainContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -640.0
+offset_top = -360.0
+offset_right = 640.0
+offset_bottom = 360.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 10
 
-[node name="InfoLabel" type="Label" parent="InfoPanel/VBox"]
+[node name="LeftPanel" type="Panel" parent="MainContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+theme_override_styles/panel = ExtResource("2_g0xmr")
 
-[node name="JumpButton" type="Button" parent="InfoPanel/VBox"]
+[node name="RightPanel" type="VBoxContainer" parent="MainContainer"]
 layout_mode = 2
-text = "JUMP"
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
 
-[node name="CancelButton" type="Button" parent="InfoPanel/VBox"]
+[node name="JumpPanel" type="Panel" parent="MainContainer/RightPanel"]
 layout_mode = 2
-text = "CANCEL"
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_override_styles/panel = ExtResource("2_g0xmr")
 
-[node name="FlavorPanel" type="Panel" parent="."]
-layout_mode = 0
-offset_left = 500.0
-offset_top = 500.0
-offset_right = 800.0
-offset_bottom = 650.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_8ufwo")
-
-[node name="FlavorLabel" type="Label" parent="FlavorPanel"]
+[node name="InfoLabel" type="Label" parent="MainContainer/RightPanel/JumpPanel"]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = -1
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 3
+
+[node name="FlavorPanel" type="Panel" parent="MainContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 8.0
+theme_override_styles/panel = ExtResource("2_g0xmr")
+
+[node name="FlavorLabel" type="Label" parent="MainContainer/RightPanel/FlavorPanel"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
 theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
+
+[node name="InfoPanel" type="Panel" parent="MainContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_override_styles/panel = ExtResource("2_g0xmr")
+
+[node name="InfoContainer" type="VBoxContainer" parent="MainContainer/RightPanel/InfoPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="JumpButton" type="Button" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+text = "JUMP"
+
+[node name="CancelButton" type="Button" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 100, 0, 1)
+text = "CANCEL"
