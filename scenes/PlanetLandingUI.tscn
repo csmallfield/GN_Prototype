@@ -80,16 +80,17 @@ grow_vertical = 2
 theme_override_constants/separation = 10
 
 [node name="PlanetName" type="Label" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0, 1)
 theme_override_font_sizes/font_size = 32
 text = "Planet Name
 "
-horizontal_alignment = 1
 vertical_alignment = 1
+autowrap_mode = 3
 
 [node name="FlavorText" type="Label" parent="MainContainer/RightPanel/InfoPanel/InfoContainer"]
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
