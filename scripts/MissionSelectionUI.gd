@@ -51,6 +51,11 @@ func show_mission_selection(planet_data: Dictionary, system_id: String, missions
 	create_mission_list()
 	update_mission_details()
 	
+	# Add controller hints
+	if Input.get_connected_joypads().size() > 0:
+		back_button.text = "Back to Planet (B)"
+		accept_mission_button.text = "Accept Mission (A)"
+	
 	# Show interface
 	visible = true
 	get_tree().paused = true
