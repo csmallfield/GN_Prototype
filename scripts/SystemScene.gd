@@ -110,7 +110,7 @@ func _notification(what):
 # Debug methods for NPC traffic
 func _input(event):
 	if OS.is_debug_build():
-		if event.is_action_pressed("ui_accept"):  # Enter key
+		if event.is_action_pressed("debug_toggle"): 
 			if traffic_manager:
 				traffic_manager.set_debug_mode(!traffic_manager.debug_mode)
 				print("Traffic debug mode: ", traffic_manager.debug_mode)

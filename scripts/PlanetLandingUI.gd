@@ -1,5 +1,5 @@
 # =============================================================================
-# PLANET LANDING UI - Interface for planet interactions
+# PLANET LANDING UI - Interface for planet interactions with gamepad support
 # =============================================================================
 # PlanetLandingUI.gd
 extends Control
@@ -19,10 +19,18 @@ var current_system_id: String = ""
 signal mission_interface_requested
 signal landing_interface_closed
 
+# Input delay system to prevent instant button activation
+var input_delay_timer: float = 0.0
+var input_delay_duration: float = 0.5  # Increased to 0.5 seconds
+var can_accept_input: bool = false
+
 func _ready():
 	# Connect button signals
 	shipping_missions_button.pressed.connect(_on_shipping_missions_pressed)
 	leave_planet_button.pressed.connect(_on_leave_planet_pressed)
+	
+	# Setup gamepad focus
+	setup_gamepad_focus()
 	
 	# Hide initially
 	visible = false
@@ -30,12 +38,37 @@ func _ready():
 	# Set process mode to work when game is paused
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+func _process(delta):
+	"""Handle input delay timer"""
+	if visible and not can_accept_input:
+		input_delay_timer += delta
+		if input_delay_timer >= input_delay_duration:
+			can_accept_input = true
+
+func setup_gamepad_focus():
+	"""Setup focus navigation for gamepad support"""
+	# Enable focus on buttons
+	shipping_missions_button.focus_mode = Control.FOCUS_ALL
+	leave_planet_button.focus_mode = Control.FOCUS_ALL
+	
+	# Set up focus neighbors (vertical navigation)
+	shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
+	leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
+	
+	# Set up wrap-around navigation
+	shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
+	leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
+
 func show_landing_interface(planet_data: Dictionary, system_id: String):
 	"""Display the landing interface for a specific planet"""
 	current_planet_data = planet_data
 	current_system_id = system_id
 	
 	print("Showing landing interface for: ", planet_data.get("name", "Unknown Planet"))
+	
+	# Reset input delay system
+	input_delay_timer = 0.0
+	can_accept_input = false
 	
 	# Load planet data
 	setup_planet_display()
@@ -46,6 +79,9 @@ func show_landing_interface(planet_data: Dictionary, system_id: String):
 	# Show the interface
 	visible = true
 	get_tree().paused = true
+	
+	# Grab focus for gamepad navigation
+	shipping_missions_button.grab_focus()
 	
 	print("Landing interface displayed")
 
@@ -306,8 +342,9 @@ func show_mission_selection_interface(missions: Array[Dictionary]):
 		
 		print("Created MissionSelectionUI")
 	
-	# Hide this interface temporarily
+	# Completely hide this interface and disable input
 	visible = false
+	process_mode = Node.PROCESS_MODE_DISABLED
 	
 	# Show mission selection
 	mission_selection_ui.show_mission_selection(current_planet_data, current_system_id, missions)
@@ -328,13 +365,21 @@ func _on_mission_accepted(mission_data: Dictionary):
 	# Refresh the planet display to show updated status
 	setup_planet_display()
 	
-	# Return to planet interface
-	visible = true
+	# Don't return to planet interface here - stay in mission interface
 
 func _on_back_to_planet_requested():
 	"""Handle return to planet from mission selection"""
 	print("Returning to planet interface")
+	# Re-enable the planet menu
 	visible = true
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	# Reset input delay to prevent immediate activation
+	input_delay_timer = 0.0
+	can_accept_input = false
+	
+	# Grab focus
+	shipping_missions_button.grab_focus()
 
 func _on_leave_planet_pressed():
 	"""Handle leave planet button press"""
@@ -344,17 +389,45 @@ func _on_leave_planet_pressed():
 func hide_landing_interface():
 	"""Hide the landing interface and return to game"""
 	visible = false
+	process_mode = Node.PROCESS_MODE_ALWAYS  # Reset process mode
 	get_tree().paused = false
+	
+	# Refresh the player's interaction detection to ensure clean state
+	var player_ship = UniverseManager.player_ship
+	if player_ship and player_ship.has_method("refresh_interaction_detection"):
+		player_ship.refresh_interaction_detection()
+	
+	# Clear any pending input to prevent issues
+	get_viewport().set_input_as_handled()
+	
+	# Reset input delay system
+	input_delay_timer = 0.0
+	can_accept_input = false
+	
 	landing_interface_closed.emit()
 	print("Landing interface closed")
 
+func get_focused_control() -> Control:
+	"""Get the currently focused control"""
+	return get_viewport().gui_get_focus_owner()
+
 func _input(event):
 	"""Handle input while landing interface is open"""
-	if not visible:
+	if not visible or not can_accept_input:
 		return
 	
-	# Close with Escape key
-	if event.is_action_pressed("ui_cancel"):
+	# Handle ui_accept (A button) for focused button
+	if event.is_action_pressed("ui_accept"):
+		var focused_control = get_focused_control()
+		if focused_control:
+			if focused_control == shipping_missions_button:
+				_on_shipping_missions_pressed()
+			elif focused_control == leave_planet_button:
+				_on_leave_planet_pressed()
+		get_viewport().set_input_as_handled()
+	
+	# Close with Escape/B button
+	elif event.is_action_pressed("ui_cancel"):
 		hide_landing_interface()
 		get_viewport().set_input_as_handled()
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# MISSION SELECTION UI - Interface for choosing cargo missions
+# MISSION SELECTION UI - Interface for choosing cargo missions with gamepad support
 # =============================================================================
 # MissionSelectionUI.gd
 extends Control
@@ -28,11 +28,60 @@ func _ready():
 	accept_mission_button.pressed.connect(_on_accept_mission_pressed)
 	back_button.pressed.connect(_on_back_button_pressed)
 	
+	# Setup gamepad focus
+	setup_gamepad_focus()
+	
 	# Hide initially
 	visible = false
 	
 	# Set process mode to work when game is paused
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+func setup_gamepad_focus():
+	"""Setup focus navigation for gamepad support"""
+	# Enable focus on main buttons
+	accept_mission_button.focus_mode = Control.FOCUS_ALL
+	back_button.focus_mode = Control.FOCUS_ALL
+	
+	# Set up focus neighbors for main buttons
+	accept_mission_button.focus_neighbor_bottom = accept_mission_button.get_path_to(back_button)
+	back_button.focus_neighbor_top = back_button.get_path_to(accept_mission_button)
+
+func setup_mission_list_focus():
+	"""Setup focus for mission list buttons"""
+	var mission_buttons = mission_list_container.get_children()
+	
+	for i in range(mission_buttons.size()):
+		var button = mission_buttons[i]
+		button.focus_mode = Control.FOCUS_ALL
+		
+		# Connect focus signals to update selection
+		if not button.focus_entered.is_connected(_on_mission_focus_changed):
+			button.focus_entered.connect(_on_mission_focus_changed.bind(button))
+		
+		# Set up vertical navigation
+		if i > 0:
+			button.focus_neighbor_top = button.get_path_to(mission_buttons[i-1])
+		if i < mission_buttons.size() - 1:
+			button.focus_neighbor_bottom = button.get_path_to(mission_buttons[i+1])
+		
+		# Set up horizontal navigation to right panel
+		button.focus_neighbor_right = button.get_path_to(accept_mission_button)
+	
+	# Connect right panel back to mission list
+	if mission_buttons.size() > 0:
+		accept_mission_button.focus_neighbor_left = accept_mission_button.get_path_to(mission_buttons[0])
+		back_button.focus_neighbor_left = back_button.get_path_to(mission_buttons[0])
+
+func _on_mission_focus_changed(button: Button):
+	"""Handle when a mission button gets focus"""
+	# Find which mission this button represents
+	var mission_buttons = mission_list_container.get_children()
+	var button_index = mission_buttons.find(button)
+	
+	if button_index >= 0 and button_index < available_missions.size():
+		var mission_data = available_missions[button_index]
+		_on_mission_button_pressed(mission_data, button)
 
 func show_mission_selection(planet_data: Dictionary, system_id: String, missions: Array[Dictionary]):
 	"""Display the mission selection interface"""
@@ -59,6 +108,12 @@ func show_mission_selection(planet_data: Dictionary, system_id: String, missions
 	# Show interface
 	visible = true
 	get_tree().paused = true
+	
+	# Grab focus for gamepad navigation
+	await get_tree().process_frame  # Wait for buttons to be created
+	var mission_buttons = mission_list_container.get_children()
+	if mission_buttons.size() > 0:
+		mission_buttons[0].grab_focus()
 
 func create_mission_list():
 	"""Create clickable buttons for each available mission"""
@@ -66,11 +121,17 @@ func create_mission_list():
 	for child in mission_list_container.get_children():
 		child.queue_free()
 	
+	# Wait for buttons to be removed
+	await get_tree().process_frame
+	
 	# Create mission buttons
 	for i in range(available_missions.size()):
 		var mission = available_missions[i]
 		var mission_button = create_mission_button(mission, i)
 		mission_list_container.add_child(mission_button)
+	
+	# Setup focus navigation for new buttons
+	call_deferred("setup_mission_list_focus")
 	
 	print("Created ", available_missions.size(), " mission buttons")
 
@@ -190,6 +251,15 @@ func _on_accept_mission_pressed():
 		# Refresh the mission list and clear selection
 		refresh_mission_interface()
 		
+		# Keep focus in the mission menu after accepting
+		await get_tree().process_frame
+		var mission_buttons = mission_list_container.get_children()
+		if mission_buttons.size() > 0:
+			mission_buttons[0].grab_focus()
+		else:
+			# No more missions, focus on back button
+			back_button.grab_focus()
+		
 	else:
 		print("❌ Failed to accept mission")
 		# Update details to show why it failed
@@ -244,13 +314,31 @@ func hide_mission_selection():
 	for child in mission_list_container.get_children():
 		child.queue_free()
 
+func get_focused_control() -> Control:
+	"""Get the currently focused control"""
+	return get_viewport().gui_get_focus_owner()
+
 func _input(event):
 	"""Handle input while mission selection is open"""
 	if not visible:
 		return
 	
-	# Close with Escape key
-	if event.is_action_pressed("ui_cancel"):
+	# Handle ui_accept (A button)
+	if event.is_action_pressed("ui_accept"):
+		var focused_control = get_focused_control()
+		if focused_control:
+			if focused_control == accept_mission_button:
+				_on_accept_mission_pressed()
+			elif focused_control == back_button:
+				_on_back_button_pressed()
+			elif focused_control in mission_list_container.get_children():
+				# Pressing A on a mission button selects it and moves focus to accept button
+				if not selected_mission.is_empty():
+					accept_mission_button.grab_focus()
+		get_viewport().set_input_as_handled()
+	
+	# Close with Escape/B button  
+	elif event.is_action_pressed("ui_cancel"):
 		_on_back_button_pressed()
 		get_viewport().set_input_as_handled()
 

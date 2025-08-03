@@ -319,20 +319,37 @@ func _input(event):
 		interact_with_target()
 	elif event.is_action_pressed("hyperspace"):
 		open_hyperspace_menu()
-	elif event.is_action_pressed("land"):
-		# Remove current_target requirement - attempt_landing() will find nearby planets
-		attempt_landing()
+	elif event.is_action_pressed("land") or event.is_action_pressed("ui_accept"):
+		# Land with L key or A button when over a planet
+		if attempt_landing():
+			# If landing was successful, consume the input to prevent menu issues
+			get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("mission_log"):
 		# Toggle mission log
 		toggle_mission_log()
-	
-	# Debug: Test mission system (remove this later)
-	if OS.is_debug_build() and event.is_action_pressed("ui_accept"):  # Enter key
-		debug_test_mission_system()
+	elif event.is_action_pressed("debug_toggle"):
+		# Debug: Test mission system
+		if OS.is_debug_build():
+			debug_test_mission_system()
 
 func interact_with_target():
 	if current_target.has_method("interact"):
 		current_target.interact()
+
+func refresh_interaction_detection():
+	"""Force refresh of interaction area detection"""
+	current_target = null
+	
+	# Manually check what's in our interaction area
+	var bodies_in_area = interaction_area.get_overlapping_bodies()
+	for body in bodies_in_area:
+		if body.has_method("can_interact") and body.can_interact():
+			current_target = body
+			print("Refreshed target: ", body.celestial_data.get("name", "Unknown"))
+			break
+	
+	if not current_target:
+		print("No targets found after refresh")
 
 func open_hyperspace_menu():
 	var ui = get_tree().get_first_node_in_group("ui")
@@ -363,10 +380,10 @@ func toggle_mission_log():
 	# Toggle the mission log
 	mission_log_ui.toggle_mission_log()
 
-func attempt_landing():
-	"""Attempt to land on the nearest landable planet"""
+func attempt_landing() -> bool:
+	"""Attempt to land on the nearest landable planet. Returns true if successful."""
 	var current_speed = linear_velocity.length()
-	var max_landing_speed = 150.0  # Reasonable landing speed - not too strict
+	var max_landing_speed = 150.0
 	
 	print("=== LANDING ATTEMPT ===")
 	print("Current speed: ", current_speed)
@@ -376,7 +393,7 @@ func attempt_landing():
 	var nearby_planet = find_nearby_landable_planet()
 	if not nearby_planet:
 		print("❌ No landable planet nearby")
-		return
+		return false
 	
 	# Update current_target to the nearest planet
 	current_target = nearby_planet
@@ -385,17 +402,18 @@ func attempt_landing():
 	# Check if target can be landed on
 	if not current_target.has_method("can_interact") or not current_target.can_interact():
 		print("❌ Cannot land on this target: ", current_target.celestial_data.get("name", "Unknown"))
-		return
+		return false
 	
 	# Check speed requirement
 	if current_speed > max_landing_speed:
 		print("❌ Moving too fast to land! Slow down to under ", max_landing_speed, " units/sec")
 		print("   (Current speed: ", round(current_speed), ")")
-		return
+		return false
 	
 	# All checks passed - show landing interface
 	print("✅ Landing conditions met!")
 	show_planet_landing_ui()
+	return true
 
 func show_planet_landing_ui():
 	"""Show the planet landing user interface"""
@@ -418,10 +436,11 @@ func show_planet_landing_ui():
 		ui_controller.add_child(landing_ui)
 		print("Created PlanetLandingUI")
 	
-	# Show the landing interface with current planet data
+	# Use the current_target that was just found/updated in attempt_landing()
 	var planet_data = current_target.celestial_data
 	var system_id = UniverseManager.current_system_id
 	
+	print("Showing landing UI for: ", planet_data.get("name", "Unknown"))
 	landing_ui.show_landing_interface(planet_data, system_id)
 	print("✅ Planet landing UI displayed")
 
