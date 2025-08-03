@@ -1,5 +1,5 @@
 # =============================================================================
-# HYPERSPACE MAP - Visual galaxy map for system navigation
+# HYPERSPACE MAP - Visual galaxy map for system navigation with gamepad support
 # =============================================================================
 # HyperspaceMap.gd
 extends Control
@@ -10,13 +10,19 @@ extends Control
 @onready var flavor_label = $MainContainer/RightPanel/FlavorPanel/FlavorLabel
 @onready var left_panel = $MainContainer/LeftPanel
 
-
-
 var systems_data: Dictionary = {}
 var system_positions: Dictionary = {}
 var system_connections: Dictionary = {}
 var selected_system: String = ""
 var current_system: String = ""
+
+# Gamepad navigation support
+var available_systems: Array[String] = []
+var system_index: int = -1
+var map_has_focus: bool = false
+var input_delay_timer: float = 0.0
+var input_delay_duration: float = 0.3
+var can_accept_input: bool = false
 
 # Visual settings - retro DOS green theme
 var bg_color = Color(0.0, 0.2, 0.0, 0.25)  # Dark green with 75% transparency
@@ -52,31 +58,65 @@ func _ready():
 	else:
 		print("ERROR: Cancel button not found!")
 	
-	# Create map canvas on the left panel
+	# Create map canvas on the left panel FIRST
 	setup_map_canvas()
+	
+	# Setup gamepad focus AFTER map canvas is created
+	setup_gamepad_focus()
 	
 	update_ui()
 
-func setup_map_canvas():
-	"""Create a control for drawing the map on the left panel"""
-	if not left_panel:
-		print("ERROR: Left panel not found!")
-		return
+func _process(delta):
+	"""Handle input delay timer"""
+	if visible and not can_accept_input:
+		input_delay_timer += delta
+		if input_delay_timer >= input_delay_duration:
+			can_accept_input = true
+
+func setup_gamepad_focus():
+	"""Setup focus navigation for gamepad support"""
+	print("Setting up gamepad focus...")
 	
-	# Create a control to draw on
-	map_canvas = Control.new()
-	map_canvas.name = "MapCanvas"
-	map_canvas.mouse_filter = Control.MOUSE_FILTER_PASS  # Allow mouse events to pass through
+	# Enable focus on buttons
+	jump_button.focus_mode = Control.FOCUS_ALL
+	cancel_button.focus_mode = Control.FOCUS_ALL
 	
-	# Make it fill the left panel
-	left_panel.add_child(map_canvas)
-	map_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Set up focus neighbors
+	jump_button.focus_neighbor_bottom = jump_button.get_path_to(cancel_button)
+	cancel_button.focus_neighbor_top = cancel_button.get_path_to(jump_button)
 	
-	# Connect the drawing
-	map_canvas.draw.connect(_draw_map)
-	map_canvas.gui_input.connect(_on_map_input)
+	# Make the map canvas focusable for system selection
+	if map_canvas:
+		map_canvas.focus_mode = Control.FOCUS_ALL
+		
+		# Connect focus signals
+		map_canvas.focus_entered.connect(_on_map_focus_entered)
+		map_canvas.focus_exited.connect(_on_map_focus_exited)
+		
+		# Set up focus neighbors between map and buttons
+		map_canvas.focus_neighbor_right = map_canvas.get_path_to(jump_button)
+		jump_button.focus_neighbor_left = jump_button.get_path_to(map_canvas)
+		cancel_button.focus_neighbor_left = cancel_button.get_path_to(map_canvas)
+		
+		print("Map canvas focus setup complete")
+	else:
+		print("ERROR: map_canvas is null during focus setup!")
+
+func _on_map_focus_entered():
+	"""Handle when map gains focus"""
+	map_has_focus = true
+	print("Map gained focus - use D-pad/analog to select systems")
 	
-	print("Map canvas created")
+	# If no system selected yet, start with available systems
+	if selected_system == "" and available_systems.size() > 0:
+		system_index = 0
+		select_system(available_systems[system_index])
+		print("Auto-selected first system: ", available_systems[system_index])
+
+func _on_map_focus_exited():
+	"""Handle when map loses focus"""
+	map_has_focus = false
+	print("Map lost focus")
 
 func setup_systems():
 	"""Define system positions and connections for the map"""
@@ -113,6 +153,47 @@ func setup_systems():
 	}
 	
 	systems_data = UniverseManager.universe_data.systems
+	
+	# Build list of available systems for gamepad navigation
+	build_available_systems_list()
+
+func build_available_systems_list():
+	"""Build ordered list of systems for gamepad navigation"""
+	available_systems.clear()
+	
+	# Start with current system's connections
+	var connections = system_connections.get(current_system, [])
+	available_systems.append_array(connections)
+	
+	# Add other systems
+	for system_id in systems_data.keys():
+		if system_id != current_system and system_id not in available_systems:
+			available_systems.append(system_id)
+	
+	print("Available systems for navigation: ", available_systems.size())
+	print("Systems: ", available_systems)
+
+func setup_map_canvas():
+	"""Create a control for drawing the map on the left panel"""
+	if not left_panel:
+		print("ERROR: Left panel not found!")
+		return
+	
+	# Create a control to draw on
+	map_canvas = Control.new()
+	map_canvas.name = "MapCanvas"
+	map_canvas.mouse_filter = Control.MOUSE_FILTER_PASS  # Allow mouse events to pass through
+	
+	# Make it fill the left panel
+	left_panel.add_child(map_canvas)
+	map_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# Connect the drawing
+	map_canvas.draw.connect(_draw_map)
+	map_canvas.gui_input.connect(_on_map_input)
+	
+	print("Map canvas created: ", map_canvas)
+	print("Map canvas size: ", map_canvas.size)
 
 func _draw_map():
 	"""Draw the hyperspace map on the map canvas"""
@@ -163,6 +244,10 @@ func _draw_map():
 		# Draw system circle
 		map_canvas.draw_circle(pos, system_radius, color)
 		
+		# Draw focus ring if this system is selected and map has focus
+		if system_id == selected_system and map_has_focus:
+			map_canvas.draw_arc(pos, system_radius + 4, 0, TAU, 32, Color.WHITE, 2.0)
+		
 		# Draw system name
 		var system_name = systems_data.get(system_id, {}).get("name", system_id)
 		var font = ThemeDB.fallback_font
@@ -175,6 +260,14 @@ func _draw_map():
 		text_pos.y = clamp(text_pos.y, draw_area.position.y + font_size, draw_area.position.y + draw_area.size.y)
 		
 		map_canvas.draw_string(font, text_pos, system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, color)
+	
+	# Draw controller instructions if map has focus
+	if map_has_focus:
+		var font = ThemeDB.fallback_font
+		var instruction_text = "D-pad/Stick: Select System  |  A: Confirm  |  →: Jump Options"
+		var instruction_size = font.get_string_size(instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
+		var instruction_pos = Vector2((canvas_size.x - instruction_size.x) / 2, canvas_size.y - 10)
+		map_canvas.draw_string(font, instruction_pos, instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.YELLOW)
 
 func scale_system_positions_to_area(draw_area: Rect2) -> Dictionary:
 	"""Scale the original system positions to fit within the specified drawing area"""
@@ -251,9 +344,37 @@ func get_system_at_position(pos: Vector2) -> String:
 	
 	return ""
 
+func navigate_systems(direction: int):
+	"""Navigate through available systems with controller"""
+	print("Navigate systems called with direction: ", direction)
+	
+	if available_systems.is_empty():
+		print("No available systems to navigate")
+		return
+	
+	# Initialize system index if needed
+	if system_index < 0:
+		system_index = 0
+	else:
+		system_index = (system_index + direction) % available_systems.size()
+		if system_index < 0:
+			system_index = available_systems.size() - 1
+	
+	# Select the new system
+	var new_system = available_systems[system_index]
+	select_system(new_system)
+	
+	print("Navigated to system ", system_index + 1, "/", available_systems.size(), ": ", new_system)
+
 func select_system(system_id: String):
 	"""Select a system and update UI"""
 	selected_system = system_id
+	
+	# Update system index to match selection (for controller navigation)
+	system_index = available_systems.find(system_id)
+	if system_index < 0:
+		system_index = 0
+	
 	update_ui()
 	if map_canvas:
 		map_canvas.queue_redraw()
@@ -328,19 +449,44 @@ func show_map():
 	setup_systems()
 	current_system = UniverseManager.current_system_id
 	selected_system = ""
+	system_index = -1
+	
+	# Reset input delay
+	input_delay_timer = 0.0
+	can_accept_input = false
+	
 	update_ui()
 	visible = true
 	get_tree().paused = true
 	
-	# Make sure map canvas redraws
+	# Wait a frame for everything to be ready, then grab focus
+	await get_tree().process_frame
+	
+	# Start with map focused for gamepad navigation
 	if map_canvas:
+		print("Grabbing focus on map canvas...")
+		map_canvas.grab_focus()
 		map_canvas.queue_redraw()
+		
+		# Check if focus was successful
+		await get_tree().process_frame
+		var focused = get_viewport().gui_get_focus_owner()
+		print("Focus owner after grab: ", focused)
+		print("Map canvas: ", map_canvas)
+		print("Focus successful: ", focused == map_canvas)
+	else:
+		print("ERROR: map_canvas is null when trying to grab focus!")
 
 func hide_map():
 	"""Hide the hyperspace map"""
 	print("Hiding hyperspace map")
 	visible = false
 	get_tree().paused = false
+	
+	# Reset state
+	map_has_focus = false
+	selected_system = ""
+	system_index = -1
 	
 	# Show minimap again
 	show_minimap()
@@ -362,6 +508,55 @@ func show_minimap():
 			minimap.visible = true
 
 func _input(event):
-	if visible and event.is_action_pressed("ui_cancel"):
+	if not visible:
+		return
+	
+	if not can_accept_input:
+		# Still handle cancel during input delay
+		if event.is_action_pressed("ui_cancel"):
+			hide_map()
+			get_viewport().set_input_as_handled()
+		return
+	
+	print("Hyperspace map input: ", event, " Map focus: ", map_has_focus)
+	
+	# Handle system navigation when map has focus
+	if map_has_focus:
+		if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down"):
+			# Navigate through systems vertically
+			var direction = 1 if event.is_action_pressed("ui_down") else -1
+			navigate_systems(direction)
+			get_viewport().set_input_as_handled()
+		
+		elif event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
+			# Navigate through systems horizontally
+			var direction = 1 if event.is_action_pressed("ui_right") else -1
+			navigate_systems(direction)
+			get_viewport().set_input_as_handled()
+		
+		elif event.is_action_pressed("ui_accept"):
+			# Select system or jump if possible
+			if selected_system != "" and can_travel_to(selected_system):
+				_on_jump_pressed()
+			elif selected_system != "":
+				# Move focus to jump button to see why we can't jump
+				jump_button.grab_focus()
+			get_viewport().set_input_as_handled()
+	
+	# Handle general input
+	if event.is_action_pressed("ui_cancel"):
 		hide_map()
 		get_viewport().set_input_as_handled()
+	
+	elif event.is_action_pressed("ui_accept"):
+		# Handle A button on focused buttons
+		var focused_control = get_viewport().gui_get_focus_owner()
+		if focused_control == jump_button:
+			_on_jump_pressed()
+		elif focused_control == cancel_button:
+			_on_cancel_pressed()
+		get_viewport().set_input_as_handled()
+
+func get_focused_control() -> Control:
+	"""Get the currently focused control"""
+	return get_viewport().gui_get_focus_owner()
