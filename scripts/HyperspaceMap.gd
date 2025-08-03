@@ -165,19 +165,17 @@ func setup_systems():
 	build_available_systems_list()
 
 func build_available_systems_list():
-	"""Build ordered list of systems for gamepad navigation"""
+	"""Build simple list of all systems for gamepad navigation"""
 	available_systems.clear()
 	
-	# Start with current system's connections
-	var connections = system_connections.get(current_system, [])
-	available_systems.append_array(connections)
-	
-	# Add other systems
+	# Just add all systems - keep it simple!
 	for system_id in systems_data.keys():
-		if system_id != current_system and system_id not in available_systems:
-			available_systems.append(system_id)
+		available_systems.append(system_id)
 	
-	print("Systems available for navigation: ", available_systems.size())
+	# Sort alphabetically for consistent order
+	available_systems.sort()
+	
+	print("All systems available for navigation: ", available_systems)
 
 func setup_map_canvas():
 	"""Create a control for drawing the map on the left panel"""
