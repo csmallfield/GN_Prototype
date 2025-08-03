@@ -68,14 +68,17 @@ func handle_input(state):
 	var rotation_input = Input.get_axis("turn_left", "turn_right")
 	state.angular_velocity = rotation_input * rotation_speed
 	
-	# Thrust
-	if Input.is_action_pressed("thrust"):
-		var thrust_vector = Vector2(0, -thrust_power).rotated(rotation)
+	# Thrust (with analog support)
+	var thrust_strength = Input.get_action_strength("thrust")
+	if thrust_strength > 0.0:
+		var thrust_vector = Vector2(0, -thrust_power * thrust_strength).rotated(rotation)
 		state.apply_central_force(thrust_vector)
-		engine_particles.emitting = true
+		engine_particles.emitting = true 
+		# Optional: Scale particle intensity with thrust strength
+		#engine_particles.amount = int(600 * thrust_strength)  # Base amount is 600
 	else:
 		engine_particles.emitting = false
-
+		
 func handle_hyperspace_sequence(state):
 	"""Handle ship behavior during hyperspace sequence"""
 	hyperspace_timer += get_physics_process_delta_time()
