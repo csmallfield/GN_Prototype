@@ -24,6 +24,11 @@ var input_delay_timer: float = 0.0
 var input_delay_duration: float = 0.3
 var can_accept_input: bool = false
 
+# Navigation cooldown for analog stick
+var navigation_cooldown_timer: float = 0.0
+var navigation_cooldown_duration: float = 0.25  # Prevent rapid navigation
+var can_navigate: bool = true
+
 # Visual settings - retro DOS green theme
 var bg_color = Color(0.0, 0.2, 0.0, 0.25)  # Dark green with 75% transparency
 var line_color = Color(0.0, 0.8, 0.0, 1.0)  # Bright green
@@ -67,16 +72,21 @@ func _ready():
 	update_ui()
 
 func _process(delta):
-	"""Handle input delay timer"""
+	"""Handle input delay timer and navigation cooldown"""
 	if visible and not can_accept_input:
 		input_delay_timer += delta
 		if input_delay_timer >= input_delay_duration:
 			can_accept_input = true
+	
+	# Handle navigation cooldown
+	if not can_navigate:
+		navigation_cooldown_timer += delta
+		if navigation_cooldown_timer >= navigation_cooldown_duration:
+			can_navigate = true
+			navigation_cooldown_timer = 0.0
 
 func setup_gamepad_focus():
 	"""Setup focus navigation for gamepad support"""
-	print("Setting up gamepad focus...")
-	
 	# Enable focus on buttons
 	jump_button.focus_mode = Control.FOCUS_ALL
 	cancel_button.focus_mode = Control.FOCUS_ALL
@@ -98,25 +108,22 @@ func setup_gamepad_focus():
 		jump_button.focus_neighbor_left = jump_button.get_path_to(map_canvas)
 		cancel_button.focus_neighbor_left = cancel_button.get_path_to(map_canvas)
 		
-		print("Map canvas focus setup complete")
+		print("Gamepad focus setup complete")
 	else:
 		print("ERROR: map_canvas is null during focus setup!")
 
 func _on_map_focus_entered():
 	"""Handle when map gains focus"""
 	map_has_focus = true
-	print("Map gained focus - use D-pad/analog to select systems")
 	
 	# If no system selected yet, start with available systems
 	if selected_system == "" and available_systems.size() > 0:
 		system_index = 0
 		select_system(available_systems[system_index])
-		print("Auto-selected first system: ", available_systems[system_index])
 
 func _on_map_focus_exited():
 	"""Handle when map loses focus"""
 	map_has_focus = false
-	print("Map lost focus")
 
 func setup_systems():
 	"""Define system positions and connections for the map"""
@@ -170,8 +177,7 @@ func build_available_systems_list():
 		if system_id != current_system and system_id not in available_systems:
 			available_systems.append(system_id)
 	
-	print("Available systems for navigation: ", available_systems.size())
-	print("Systems: ", available_systems)
+	print("Systems available for navigation: ", available_systems.size())
 
 func setup_map_canvas():
 	"""Create a control for drawing the map on the left panel"""
@@ -192,8 +198,7 @@ func setup_map_canvas():
 	map_canvas.draw.connect(_draw_map)
 	map_canvas.gui_input.connect(_on_map_input)
 	
-	print("Map canvas created: ", map_canvas)
-	print("Map canvas size: ", map_canvas.size)
+	print("Map canvas created")
 
 func _draw_map():
 	"""Draw the hyperspace map on the map canvas"""
@@ -346,7 +351,8 @@ func get_system_at_position(pos: Vector2) -> String:
 
 func navigate_systems(direction: int):
 	"""Navigate through available systems with controller"""
-	print("Navigate systems called with direction: ", direction)
+	if not can_navigate:
+		return  # Cooldown active, ignore input
 	
 	if available_systems.is_empty():
 		print("No available systems to navigate")
@@ -364,7 +370,11 @@ func navigate_systems(direction: int):
 	var new_system = available_systems[system_index]
 	select_system(new_system)
 	
-	print("Navigated to system ", system_index + 1, "/", available_systems.size(), ": ", new_system)
+	# Start cooldown to prevent rapid navigation
+	can_navigate = false
+	navigation_cooldown_timer = 0.0
+	
+	print("Selected: ", new_system, " (", system_index + 1, "/", available_systems.size(), ")")
 
 func select_system(system_id: String):
 	"""Select a system and update UI"""
@@ -451,9 +461,11 @@ func show_map():
 	selected_system = ""
 	system_index = -1
 	
-	# Reset input delay
+	# Reset input delay and navigation cooldown
 	input_delay_timer = 0.0
 	can_accept_input = false
+	navigation_cooldown_timer = 0.0
+	can_navigate = true  # Allow immediate navigation when map opens
 	
 	update_ui()
 	visible = true
@@ -464,18 +476,8 @@ func show_map():
 	
 	# Start with map focused for gamepad navigation
 	if map_canvas:
-		print("Grabbing focus on map canvas...")
 		map_canvas.grab_focus()
 		map_canvas.queue_redraw()
-		
-		# Check if focus was successful
-		await get_tree().process_frame
-		var focused = get_viewport().gui_get_focus_owner()
-		print("Focus owner after grab: ", focused)
-		print("Map canvas: ", map_canvas)
-		print("Focus successful: ", focused == map_canvas)
-	else:
-		print("ERROR: map_canvas is null when trying to grab focus!")
 
 func hide_map():
 	"""Hide the hyperspace map"""
@@ -517,8 +519,6 @@ func _input(event):
 			hide_map()
 			get_viewport().set_input_as_handled()
 		return
-	
-	print("Hyperspace map input: ", event, " Map focus: ", map_has_focus)
 	
 	# Handle system navigation when map has focus
 	if map_has_focus:
