@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 UniverseManager="*res://scripts/UniverseManager.gd"
 PlayerData="*res://scripts/PlayerData.gd"
+ShipManager="*res://scripts/ShipManager.gd"
 
 [display]
 

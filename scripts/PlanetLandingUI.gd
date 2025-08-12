@@ -5,11 +5,15 @@
 extends Control
 class_name PlanetLandingUI
 
-@onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
-@onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
+#@onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
+#@onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
 @onready var flavor_text_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
 @onready var planet_name_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
 @onready var planet_image: TextureRect = $MainContainer/LeftPanel/PlanetImage
+
+@onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
+@onready var shipyard_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShipyardButton
+@onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
 
 # Current planet data
 var current_planet_data: Dictionary = {}
@@ -27,6 +31,7 @@ var can_accept_input: bool = false
 func _ready():
 	# Connect button signals
 	shipping_missions_button.pressed.connect(_on_shipping_missions_pressed)
+	shipyard_button.pressed.connect(_on_shipyard_pressed)
 	leave_planet_button.pressed.connect(_on_leave_planet_pressed)
 	
 	# Setup gamepad focus
@@ -49,6 +54,7 @@ func setup_gamepad_focus():
 	"""Setup focus navigation for gamepad support"""
 	# Enable focus on buttons
 	shipping_missions_button.focus_mode = Control.FOCUS_ALL
+	shipyard_button.focus_mode = Control.FOCUS_ALL
 	leave_planet_button.focus_mode = Control.FOCUS_ALL
 	
 	# Set up focus neighbors (vertical navigation)
@@ -72,6 +78,9 @@ func show_landing_interface(planet_data: Dictionary, system_id: String):
 	
 	# Load planet data
 	setup_planet_display()
+	
+	# Setup available services
+	setup_planet_services()
 	
 	# Check for deliveries first
 	check_for_deliveries()
@@ -381,6 +390,83 @@ func _on_back_to_planet_requested():
 	# Grab focus
 	shipping_missions_button.grab_focus()
 
+func _on_shipyard_pressed():
+	"""Handle shipyard button press"""
+	print("Shipyard button pressed")
+	
+	# Check if planet has shipyard
+	var services = current_planet_data.get("services", [])
+	if not "shipyard" in services:
+		print("No shipyard available at this location")
+		return
+	
+	# Show shipyard interface
+	show_shipyard_interface()
+
+func show_shipyard_interface():
+	"""Show the shipyard interface"""
+	# Get or create the shipyard UI
+	var ui_controller = get_parent()  # Should be UIController
+	var shipyard_ui = ui_controller.get_node_or_null("ShipyardUI")
+	
+	if not shipyard_ui:
+		# Create the shipyard UI
+		var shipyard_ui_scene = load("res://scenes/ShipyardUI.tscn")
+		if not shipyard_ui_scene:
+			print("❌ Could not load ShipyardUI.tscn")
+			return
+		
+		shipyard_ui = shipyard_ui_scene.instantiate()
+		shipyard_ui.name = "ShipyardUI"
+		ui_controller.add_child(shipyard_ui)
+		
+		# Connect signals
+		shipyard_ui.ship_purchased.connect(_on_ship_purchased)
+		shipyard_ui.back_to_planet_requested.connect(_on_back_to_planet_requested)
+		
+		print("Created ShipyardUI")
+	
+	# Completely hide this interface and disable input
+	visible = false
+	process_mode = Node.PROCESS_MODE_DISABLED
+	
+	# Show shipyard
+	shipyard_ui.show_shipyard(current_planet_data, current_system_id)
+
+func _on_ship_purchased(ship_data: Dictionary):
+	"""Handle ship purchase from shipyard UI"""
+	print("Ship purchased: ", ship_data.get("name", "Unknown"))
+	
+	# Show confirmation
+	var ship_name = ship_data.get("name", "Unknown Ship")
+	
+	print("✅ SHIP PURCHASED!")
+	print("New ship: ", ship_name)
+	print("Credits remaining: ", PlayerData.get_credits())
+	
+	# Refresh the planet display to show updated status
+	setup_planet_display()
+
+func setup_planet_services():
+	"""Setup which services are available on this planet"""
+	var services = current_planet_data.get("services", [])
+	
+	# Check if shipyard is available
+	var has_shipyard = "shipyard" in services
+	shipyard_button.visible = has_shipyard
+	shipyard_button.disabled = not has_shipyard
+	
+	if has_shipyard:
+		print("Shipyard available on this planet")
+	else:
+		print("No shipyard on this planet")
+	
+	# Update focus chain if shipyard is not available
+	if not has_shipyard:
+		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
+		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
+
+
 func _on_leave_planet_pressed():
 	"""Handle leave planet button press"""
 	print("Leave Planet button pressed")
@@ -422,6 +508,8 @@ func _input(event):
 		if focused_control:
 			if focused_control == shipping_missions_button:
 				_on_shipping_missions_pressed()
+			elif focused_control == shipyard_button:  # ← ADD THIS LINE
+				_on_shipyard_pressed()
 			elif focused_control == leave_planet_button:
 				_on_leave_planet_pressed()
 		get_viewport().set_input_as_handled()

@@ -93,8 +93,6 @@ func can_travel_to_system(system_id: String) -> bool:
 	var connections = current_system.get("connections", [])
 	return system_id in connections
 
-# Add this new function to UniverseManager.gd
-
 func remove_mission_from_system(planet_id: String, mission_data: Dictionary):
 	"""Remove an accepted mission from the current system's available missions"""
 	if current_system_missions.has(planet_id):

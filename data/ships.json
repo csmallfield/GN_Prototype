@@ -1,0 +1,71 @@
+{
+  "ships": {
+	"scout_mk1": {
+	  "id": "scout_mk1",
+	  "name": "Scout Mk I",
+	  "description": "A reliable light freighter popular among independent traders. Good balance of cargo space and maneuverability makes it ideal for new pilots.",
+	  "manufacturer": "Terran Dynamics",
+	  "class": "Light Freighter",
+	  "cost": 5000,
+	  "graphics": {
+		"sprite": "res://sprites/ships/scout_mk1.png",
+		"thumbnail": "res://sprites/ships/thumbnails/scout_mk1_thumb.png",
+		"large_view": "res://sprites/ships/large/scout_mk1_large.png"
+	  },
+	  "stats": {
+		"thrust_power": 500.0,
+		"rotation_speed": 3.0,
+		"max_velocity": 400.0,
+		"hyperspace_thrust_power": 1500.0,
+		"hyperspace_entry_speed": 800.0,
+		"cargo_capacity": 100
+	  },
+	  "flavor_text": "The Scout Mk I has been the backbone of independent trading for decades. While not the fastest or most spacious ship available, its reliable systems and affordable maintenance make it the perfect choice for pilots just starting their careers among the stars."
+	},
+	"cargo_hauler": {
+	  "id": "cargo_hauler",
+	  "name": "Freight Master",
+	  "description": "A heavy cargo vessel designed for maximum storage capacity. Slower than lighter ships but can carry massive payloads across multiple systems.",
+	  "manufacturer": "Industrial Shipworks",
+	  "class": "Heavy Freighter",
+	  "cost": 5000,
+	  "graphics": {
+		"sprite": "res://sprites/ships/cargo_hauler.png",
+		"thumbnail": "res://sprites/ships/thumbnails/cargo_hauler_thumb.png",
+		"large_view": "res://sprites/ships/large/cargo_hauler_large.png"
+	  },
+	  "stats": {
+		"thrust_power": 350.0,
+		"rotation_speed": 2.0,
+		"max_velocity": 280.0,
+		"hyperspace_thrust_power": 1200.0,
+		"hyperspace_entry_speed": 650.0,
+		"cargo_capacity": 250
+	  },
+	  "flavor_text": "When cargo capacity matters more than speed, the Freight Master delivers. This workhorse can haul enormous loads between systems, making it the preferred choice for serious cargo runners. Just don't expect to outrun pirates in one of these."
+	},
+	"interceptor": {
+	  "id": "interceptor",
+	  "name": "Lightning Interceptor",
+	  "description": "A sleek, fast courier vessel built for speed and agility. Limited cargo space but unmatched velocity and maneuverability.",
+	  "manufacturer": "Apex Engineering",
+	  "class": "Courier",
+	  "cost": 5000,
+	  "graphics": {
+		"sprite": "res://sprites/ships/interceptor.png",
+		"thumbnail": "res://sprites/ships/thumbnails/interceptor_thumb.png",
+		"large_view": "res://sprites/ships/large/interceptor_large.png"
+	  },
+	  "stats": {
+		"thrust_power": 750.0,
+		"rotation_speed": 4.5,
+		"max_velocity": 600.0,
+		"hyperspace_thrust_power": 2000.0,
+		"hyperspace_entry_speed": 1000.0,
+		"cargo_capacity": 50
+	  },
+	  "flavor_text": "Built for pilots who value speed above all else, the Lightning Interceptor can outrun almost anything in space. Popular with couriers, scouts, and anyone who needs to get somewhere fast. The limited cargo hold means you'll need to choose your contracts carefully."
+	}
+  },
+  "starting_ship": "scout_mk1"
+}
