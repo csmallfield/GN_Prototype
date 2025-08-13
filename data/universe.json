@@ -99,7 +99,7 @@
 		  }
 		},
 		{
-		  "id": "asteroid_belt",
+		  "id": "ceres",
 		  "name": "Ceres Mining Station",
 		  "type": "station",
 		  "description": "A rough mining outpost in the asteroid belt",

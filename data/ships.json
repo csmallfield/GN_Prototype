@@ -18,7 +18,7 @@
 		"max_velocity": 400.0,
 		"hyperspace_thrust_power": 1500.0,
 		"hyperspace_entry_speed": 800.0,
-		"cargo_capacity": 100
+		"cargo_capacity": 40
 	  },
 	  "flavor_text": "The Scout Mk I has been the backbone of independent trading for decades. While not the fastest or most spacious ship available, its reliable systems and affordable maintenance make it the perfect choice for pilots just starting their careers among the stars."
 	},
@@ -28,7 +28,7 @@
 	  "description": "A heavy cargo vessel designed for maximum storage capacity. Slower than lighter ships but can carry massive payloads across multiple systems.",
 	  "manufacturer": "Industrial Shipworks",
 	  "class": "Heavy Freighter",
-	  "cost": 5000,
+	  "cost": 120000,
 	  "graphics": {
 		"sprite": "res://sprites/ships/cargo_hauler.png",
 		"thumbnail": "res://sprites/ships/thumbnails/cargo_hauler_thumb.png",
@@ -40,7 +40,7 @@
 		"max_velocity": 200.0,
 		"hyperspace_thrust_power": 1200.0,
 		"hyperspace_entry_speed": 650.0,
-		"cargo_capacity": 250
+		"cargo_capacity": 200
 	  },
 	  "flavor_text": "When cargo capacity matters more than speed, the Freight Master delivers. Just don't expect to outrun pirates in one of these."
 	},
@@ -50,7 +50,7 @@
 	  "description": "A sleek, fast courier vessel built for speed and agility. Limited cargo space but unmatched velocity and maneuverability.",
 	  "manufacturer": "Apex Engineering",
 	  "class": "Courier",
-	  "cost": 5000,
+	  "cost": 85000,
 	  "graphics": {
 		"sprite": "res://sprites/ships/interceptor.png",
 		"thumbnail": "res://sprites/ships/thumbnails/interceptor_thumb.png",
@@ -62,7 +62,7 @@
 		"max_velocity": 600.0,
 		"hyperspace_thrust_power": 2000.0,
 		"hyperspace_entry_speed": 1000.0,
-		"cargo_capacity": 50
+		"cargo_capacity": 65
 	  },
 	  "flavor_text": "Built for pilots who value speed above all else, the Lightning Interceptor can outrun almost anything in space. The limited cargo hold means you'll need to choose your contracts carefully."
 	}

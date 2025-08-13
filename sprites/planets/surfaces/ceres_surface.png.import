@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://byw7tsgmw52bw"
-path="res://.godot/imported/interceptor_thumb.png-d8491af499437ab1b04283de6d6c4c2f.ctex"
+uid="uid://c7di460dsfkq5"
+path="res://.godot/imported/ceres_surface.png-75233304f83fc46c1431ca982df04de8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/ships/thumbnail/interceptor_thumb.png"
-dest_files=["res://.godot/imported/interceptor_thumb.png-d8491af499437ab1b04283de6d6c4c2f.ctex"]
+source_file="res://sprites/planets/surfaces/ceres_surface.png"
+dest_files=["res://.godot/imported/ceres_surface.png-75233304f83fc46c1431ca982df04de8.ctex"]
 
 [params]
 

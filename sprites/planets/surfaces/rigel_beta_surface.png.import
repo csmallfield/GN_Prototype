@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmcmpmyeffehf"
-path="res://.godot/imported/cargo_hauler_thumb.png-6e6e6a7d8732cc59cd1f540071a54246.ctex"
+uid="uid://bwgd2p0r6d7u3"
+path="res://.godot/imported/rigel_beta_surface.png-6e8d59f2dac59a1e4f768a31bd985a4d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/ships/thumbnail/cargo_hauler_thumb.png"
-dest_files=["res://.godot/imported/cargo_hauler_thumb.png-6e6e6a7d8732cc59cd1f540071a54246.ctex"]
+source_file="res://sprites/planets/surfaces/rigel_beta_surface.png"
+dest_files=["res://.godot/imported/rigel_beta_surface.png-6e8d59f2dac59a1e4f768a31bd985a4d.ctex"]
 
 [params]
 

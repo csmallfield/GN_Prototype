@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c1x53odta27o5"
-path="res://.godot/imported/scout_mk1_thumb.png-bca17427fca90a13e42129ac1dca7765.ctex"
+uid="uid://bmcmpmyeffehf"
+path="res://.godot/imported/cargo_hauler_thumb.png-6f3b3558646c7826638b72636fe6e961.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/ships/thumbnail/scout_mk1_thumb.png"
-dest_files=["res://.godot/imported/scout_mk1_thumb.png-bca17427fca90a13e42129ac1dca7765.ctex"]
+source_file="res://sprites/ships/thumbnails/cargo_hauler_thumb.png"
+dest_files=["res://.godot/imported/cargo_hauler_thumb.png-6f3b3558646c7826638b72636fe6e961.ctex"]
 
 [params]
 
