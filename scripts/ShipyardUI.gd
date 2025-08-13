@@ -6,11 +6,12 @@ extends Control
 class_name ShipyardUI
 
 @onready var ship_list_container: VBoxContainer = $MainContainer/LeftPanel/ShipListContainer/ScrollContainer/ShipList
-@onready var ship_image: TextureRect = $MainContainer/RightPanel/ShipImagePanel/ShipImage
 @onready var ship_name_label: Label = $MainContainer/RightPanel/ShipDetailsPanel/ShipDetailsContainer/ShipNameLabel
 @onready var ship_stats_label: Label = $MainContainer/RightPanel/ShipDetailsPanel/ShipDetailsContainer/ShipStatsLabel
-@onready var purchase_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/PurchaseButton
-@onready var back_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/BackButton
+@onready var ship_image: TextureRect = $MainContainer/CenterPanel/ShipImagePanel/ShipImage
+@onready var purchase_button: Button = $MainContainer/CenterPanel/ButtonPanel/ButtonContainer/PurchaseButton
+@onready var back_button: Button = $MainContainer/CenterPanel/ButtonPanel/ButtonContainer/BackButton
+
 
 # Ship data
 var available_ships: Array = []
