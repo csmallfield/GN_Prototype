@@ -35,14 +35,14 @@
 		"large_view": "res://sprites/ships/large/cargo_hauler_large.png"
 	  },
 	  "stats": {
-		"thrust_power": 350.0,
-		"rotation_speed": 2.0,
-		"max_velocity": 280.0,
+		"thrust_power": 250.0,
+		"rotation_speed": 1.5,
+		"max_velocity": 200.0,
 		"hyperspace_thrust_power": 1200.0,
 		"hyperspace_entry_speed": 650.0,
 		"cargo_capacity": 250
 	  },
-	  "flavor_text": "When cargo capacity matters more than speed, the Freight Master delivers. This workhorse can haul enormous loads between systems, making it the preferred choice for serious cargo runners. Just don't expect to outrun pirates in one of these."
+	  "flavor_text": "When cargo capacity matters more than speed, the Freight Master delivers. Just don't expect to outrun pirates in one of these."
 	},
 	"interceptor": {
 	  "id": "interceptor",
@@ -64,7 +64,7 @@
 		"hyperspace_entry_speed": 1000.0,
 		"cargo_capacity": 50
 	  },
-	  "flavor_text": "Built for pilots who value speed above all else, the Lightning Interceptor can outrun almost anything in space. Popular with couriers, scouts, and anyone who needs to get somewhere fast. The limited cargo hold means you'll need to choose your contracts carefully."
+	  "flavor_text": "Built for pilots who value speed above all else, the Lightning Interceptor can outrun almost anything in space. The limited cargo hold means you'll need to choose your contracts carefully."
 	}
   },
   "starting_ship": "scout_mk1"
