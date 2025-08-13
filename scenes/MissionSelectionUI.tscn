@@ -38,7 +38,7 @@ grow_vertical = 2
 [node name="LeftPanel" type="Panel" parent="MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 3.0
+size_flags_stretch_ratio = 2.5
 theme_override_styles/panel = ExtResource("2_uxian")
 
 [node name="MissionListContainer" type="VBoxContainer" parent="MainContainer/LeftPanel"]
@@ -62,6 +62,7 @@ text = "Available Cargo Missions"
 horizontal_alignment = 1
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/LeftPanel/MissionListContainer"]
+clip_contents = false
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -96,7 +97,7 @@ text = "Mission Deails"
 horizontal_alignment = 1
 
 [node name="MissionDetailsText" type="Label" parent="MainContainer/RightPanel/MissionDetailsContainer"]
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 100, 0, 1)
