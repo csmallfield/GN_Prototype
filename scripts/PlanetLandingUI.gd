@@ -5,15 +5,12 @@
 extends Control
 class_name PlanetLandingUI
 
-#@onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
-#@onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
-@onready var flavor_text_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
-@onready var planet_name_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
-@onready var planet_image: TextureRect = $MainContainer/LeftPanel/PlanetImage
-
 @onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
 @onready var shipyard_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShipyardButton
 @onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
+@onready var flavor_text_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
+@onready var planet_name_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
+@onready var planet_image: TextureRect = $MainContainer/LeftPanel/PlanetImage
 
 # Current planet data
 var current_planet_data: Dictionary = {}
@@ -57,13 +54,8 @@ func setup_gamepad_focus():
 	shipyard_button.focus_mode = Control.FOCUS_ALL
 	leave_planet_button.focus_mode = Control.FOCUS_ALL
 	
-	# Set up focus neighbors (vertical navigation)
-	shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
-	leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
-	
-	# Set up wrap-around navigation
-	shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
-	leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
+	# Note: Actual focus neighbors are set up in setup_planet_services()
+	# based on which services are available on the current planet
 
 func show_landing_interface(planet_data: Dictionary, system_id: String):
 	"""Display the landing interface for a specific planet"""
@@ -79,7 +71,7 @@ func show_landing_interface(planet_data: Dictionary, system_id: String):
 	# Load planet data
 	setup_planet_display()
 	
-	# Setup available services
+	# Setup available services (this will configure button visibility and focus)
 	setup_planet_services()
 	
 	# Check for deliveries first
@@ -89,10 +81,43 @@ func show_landing_interface(planet_data: Dictionary, system_id: String):
 	visible = true
 	get_tree().paused = true
 	
-	# Grab focus for gamepad navigation
+	# Grab focus for gamepad navigation (always start with missions button)
 	shipping_missions_button.grab_focus()
 	
 	print("Landing interface displayed")
+
+func setup_planet_services():
+	"""Setup which services are available on this planet"""
+	var services = current_planet_data.get("services", [])
+	
+	# Check if shipyard is available
+	var has_shipyard = "shipyard" in services
+	
+	# Show/hide shipyard button based on availability
+	shipyard_button.visible = has_shipyard
+	shipyard_button.disabled = not has_shipyard
+	
+	# Setup focus chain based on available services
+	if has_shipyard:
+		print("Shipyard available on this planet")
+		# 3-button chain: Missions -> Shipyard -> Leave
+		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(shipyard_button)
+		shipyard_button.focus_neighbor_top = shipyard_button.get_path_to(shipping_missions_button)
+		shipyard_button.focus_neighbor_bottom = shipyard_button.get_path_to(leave_planet_button)
+		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipyard_button)
+		
+		# Wrap-around navigation
+		shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
+		leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
+	else:
+		print("No shipyard on this planet")
+		# 2-button chain: Missions -> Leave (skip shipyard)
+		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
+		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
+		
+		# Wrap-around navigation
+		shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
+		leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
 
 func setup_planet_display():
 	"""Setup the visual elements of the landing interface"""
@@ -447,26 +472,6 @@ func _on_ship_purchased(ship_data: Dictionary):
 	# Refresh the planet display to show updated status
 	setup_planet_display()
 
-func setup_planet_services():
-	"""Setup which services are available on this planet"""
-	var services = current_planet_data.get("services", [])
-	
-	# Check if shipyard is available
-	var has_shipyard = "shipyard" in services
-	shipyard_button.visible = has_shipyard
-	shipyard_button.disabled = not has_shipyard
-	
-	if has_shipyard:
-		print("Shipyard available on this planet")
-	else:
-		print("No shipyard on this planet")
-	
-	# Update focus chain if shipyard is not available
-	if not has_shipyard:
-		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
-		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
-
-
 func _on_leave_planet_pressed():
 	"""Handle leave planet button press"""
 	print("Leave Planet button pressed")
@@ -508,7 +513,7 @@ func _input(event):
 		if focused_control:
 			if focused_control == shipping_missions_button:
 				_on_shipping_missions_pressed()
-			elif focused_control == shipyard_button:  # ← ADD THIS LINE
+			elif focused_control == shipyard_button:
 				_on_shipyard_pressed()
 			elif focused_control == leave_planet_button:
 				_on_leave_planet_pressed()
@@ -531,7 +536,11 @@ func debug_show_test_landing():
 		"type": "planet",
 		"population": 8000000000,
 		"government": "confederation",
-		"tech_level": 5
+		"tech_level": 5,
+		"services": ["shipyard", "outfitter", "commodity_exchange", "mission_computer"],
+		"shipyard": {
+			"available_ships": ["scout_mk1", "cargo_hauler", "interceptor"]
+		}
 	}
 	
 	show_landing_interface(test_planet, "sol_system")

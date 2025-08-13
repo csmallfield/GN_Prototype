@@ -101,6 +101,15 @@ func show_shipyard(planet_data: Dictionary, system_id: String):
 	
 	# Setup UI
 	create_ship_list()
+	
+	# Auto-select first ship
+	if available_ships.size() > 0:
+		var first_ship_id = available_ships[0]
+		await get_tree().process_frame  # Wait for buttons to be created
+		var ship_buttons = ship_list_container.get_children()
+		if ship_buttons.size() > 0:
+			_on_ship_button_pressed(first_ship_id, ship_buttons[0])
+	
 	update_ship_details()
 	
 	# Add controller hints
