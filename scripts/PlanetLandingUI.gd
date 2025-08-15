@@ -598,37 +598,42 @@ func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jump
 	var button_container = VBoxContainer.new()
 	button_container.add_theme_constant_override("separation", 8)
 	
+	var recharge_buttons: Array[Button] = []
+	
 	# Full recharge button (if possible)
 	if jumps_needed <= max_affordable:
-		var full_button = Button.new()
+		var full_button = create_recharge_button()
 		var full_cost = jumps_needed * cost_per_jump
 		full_button.text = "Full Recharge (%d jumps) - %s credits" % [jumps_needed, MissionGenerator.format_credits(full_cost)]
-		full_button.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+		full_button.add_theme_color_override("font_color", Color(0, 1, 0, 1))  # Green for full recharge
 		
-		# Fixed: Capture variables by value using callable with bind
 		full_button.pressed.connect(perform_recharge_and_close.bind(popup, jumps_needed, cost_per_jump))
 		button_container.add_child(full_button)
+		recharge_buttons.append(full_button)
 	
 	# Individual amount buttons
 	for i in range(1, min(max_affordable + 1, jumps_needed + 1)):
 		if i == jumps_needed and jumps_needed <= max_affordable:
 			continue  # Skip if we already have a full button
 		
-		var amount_button = Button.new()
+		var amount_button = create_recharge_button()
 		var amount_cost = i * cost_per_jump
 		var plural = "jump" if i == 1 else "jumps"
 		amount_button.text = "%d %s - %s credits" % [i, plural, MissionGenerator.format_credits(amount_cost)]
-		amount_button.add_theme_color_override("font_color", Color(0, 1, 1, 1))
+		amount_button.add_theme_color_override("font_color", Color(0, 1, 1, 1))  # Cyan for partial recharge
 		
-		# Fixed: Capture variables by value using callable with bind
 		amount_button.pressed.connect(perform_recharge_and_close.bind(popup, i, cost_per_jump))
 		button_container.add_child(amount_button)
+		recharge_buttons.append(amount_button)
+	
+	# Setup gamepad focus navigation for recharge buttons
+	setup_recharge_button_focus(recharge_buttons)
 	
 	vbox.add_child(button_container)
 	
 	# Cancel note
 	var cancel_note = Label.new()
-	cancel_note.text = "\nPress OK or ESC to cancel"
+	cancel_note.text = "\nUse D-pad/stick to navigate, A to select, B to cancel"
 	cancel_note.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1))
 	cancel_note.add_theme_font_size_override("font_size", 12)
 	cancel_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -649,6 +654,94 @@ func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jump
 	add_child(popup)
 	popup.popup_centered()
 	popup.confirmed.connect(func(): popup.queue_free())
+	
+	# Focus the first recharge button for gamepad navigation
+	if recharge_buttons.size() > 0:
+		await get_tree().process_frame  # Wait for popup to be ready
+		recharge_buttons[0].grab_focus()
+
+func create_recharge_button() -> Button:
+	"""Create a properly styled recharge option button"""
+	var button = Button.new()
+	
+	# Enable gamepad focus
+	button.focus_mode = Control.FOCUS_ALL
+	
+	# Style the button to look more like a button
+	button.add_theme_font_size_override("font_size", 16)
+	button.custom_minimum_size = Vector2(0, 40)
+	
+	# Create a style for normal state
+	var normal_style = StyleBoxFlat.new()
+	normal_style.bg_color = Color(0, 0.2, 0.2, 0.6)
+	normal_style.border_color = Color(0, 0.8, 0.8, 0.8)
+	normal_style.border_width_left = 1
+	normal_style.border_width_right = 1
+	normal_style.border_width_top = 1
+	normal_style.border_width_bottom = 1
+	normal_style.corner_radius_top_left = 4
+	normal_style.corner_radius_top_right = 4
+	normal_style.corner_radius_bottom_left = 4
+	normal_style.corner_radius_bottom_right = 4
+	button.add_theme_stylebox_override("normal", normal_style)
+	
+	# Create a style for hover/focus state
+	var hover_style = StyleBoxFlat.new()
+	hover_style.bg_color = Color(0, 0.4, 0.4, 0.8)
+	hover_style.border_color = Color(0, 1, 1, 1)
+	hover_style.border_width_left = 2
+	hover_style.border_width_right = 2
+	hover_style.border_width_top = 2
+	hover_style.border_width_bottom = 2
+	hover_style.corner_radius_top_left = 4
+	hover_style.corner_radius_top_right = 4
+	hover_style.corner_radius_bottom_left = 4
+	hover_style.corner_radius_bottom_right = 4
+	button.add_theme_stylebox_override("hover", hover_style)
+	button.add_theme_stylebox_override("focus", hover_style)
+	
+	# Create a style for pressed state
+	var pressed_style = StyleBoxFlat.new()
+	pressed_style.bg_color = Color(0, 0.6, 0.6, 1.0)
+	pressed_style.border_color = Color(1, 1, 1, 1)
+	pressed_style.border_width_left = 2
+	pressed_style.border_width_right = 2
+	pressed_style.border_width_top = 2
+	pressed_style.border_width_bottom = 2
+	pressed_style.corner_radius_top_left = 4
+	pressed_style.corner_radius_top_right = 4
+	pressed_style.corner_radius_bottom_left = 4
+	pressed_style.corner_radius_bottom_right = 4
+	button.add_theme_stylebox_override("pressed", pressed_style)
+	
+	return button
+
+func setup_recharge_button_focus(buttons: Array[Button]):
+	"""Setup gamepad focus navigation for recharge buttons"""
+	if buttons.size() <= 1:
+		return
+	
+	# Setup vertical navigation between recharge buttons
+	for i in range(buttons.size()):
+		var current_button = buttons[i]
+		
+		# Set up vertical navigation
+		if i > 0:
+			var prev_button = buttons[i - 1]
+			current_button.focus_neighbor_top = current_button.get_path_to(prev_button)
+		
+		if i < buttons.size() - 1:
+			var next_button = buttons[i + 1]
+			current_button.focus_neighbor_bottom = current_button.get_path_to(next_button)
+		
+		# Wrap around navigation
+		if i == 0:  # First button
+			var last_button = buttons[buttons.size() - 1]
+			current_button.focus_neighbor_top = current_button.get_path_to(last_button)
+		
+		if i == buttons.size() - 1:  # Last button
+			var first_button = buttons[0]
+			current_button.focus_neighbor_bottom = current_button.get_path_to(first_button)
 
 func perform_recharge_and_close(popup: AcceptDialog, jumps: int, cost_per_jump: int):
 	"""Helper function to perform recharge and close popup"""
