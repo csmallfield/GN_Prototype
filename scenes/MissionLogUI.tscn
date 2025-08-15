@@ -46,11 +46,13 @@ text = "MISSION LOG"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="MainPanel/MainContainer"]
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 100, 0, 1)
 theme_override_font_sizes/font_size = 14
 text = "Credits: 50,000 | Cargo: 0/100 tons"
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="ActiveMissionsHeader" type="Label" parent="MainPanel/MainContainer"]
 layout_mode = 2

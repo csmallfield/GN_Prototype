@@ -559,6 +559,16 @@ func start_hyperspace_sequence(destination_system: String):
 	"""Begin the hyperspace jump sequence"""
 	print("Starting hyperspace sequence to: ", destination_system)
 	
+	# Check if player has jumps available
+	if not PlayerData.can_hyperspace_jump():
+		show_no_jumps_notification()
+		return
+	
+	# Consume a hyperspace jump
+	if not PlayerData.consume_hyperspace_jump():
+		show_no_jumps_notification()
+		return
+	
 	# Disable camera smoothing for the entire sequence
 	if camera:
 		camera.position_smoothing_enabled = false
@@ -579,6 +589,65 @@ func start_hyperspace_sequence(destination_system: String):
 	jump_direction = Vector2.ZERO
 	
 	print("Phase 1: Beginning deceleration")
+
+func show_no_jumps_notification():
+	"""Show notification when player has no hyperspace jumps remaining"""
+	print("❌ No hyperspace jumps remaining!")
+	
+	# Create a notification popup
+	var popup = AcceptDialog.new()
+	popup.title = "HYPERSPACE DRIVE DEPLETED"
+	popup.size = Vector2(500, 300)
+	
+	# Create custom content
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 15)
+	
+	# Header
+	var header = Label.new()
+	header.text = "⚠ HYPERSPACE DRIVE FUEL DEPLETED"
+	header.add_theme_color_override("font_color", Color(1, 0.5, 0, 1))  # Orange
+	header.add_theme_font_size_override("font_size", 20)
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Separator
+	var separator = HSeparator.new()
+	separator.add_theme_color_override("separator", Color(1, 0.5, 0, 1))
+	vbox.add_child(separator)
+	
+	# Details
+	var details = Label.new()
+	var jumps_info = "Current Jumps: %d/%d" % [PlayerData.get_current_jumps(), PlayerData.get_max_jumps()]
+	details.text = "Your hyperspace drive requires fuel to make jumps between systems.\n\n"
+	details.text += jumps_info + "\n\n"
+	details.text += "Land on a nearby planet or station to recharge your hyperspace drive.\n\n"
+	details.text += "Recharge costs 200 credits per jump."
+	
+	details.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+	details.add_theme_font_size_override("font_size", 16)
+	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(details)
+	
+	# Add content to popup
+	popup.add_child(vbox)
+	
+	# Style the popup
+	var style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0.1, 0.05, 0, 0.95)  # Dark orange background
+	style_box.border_color = Color(1, 0.5, 0, 1)   # Orange border
+	style_box.border_width_left = 2
+	style_box.border_width_right = 2
+	style_box.border_width_top = 2
+	style_box.border_width_bottom = 2
+	popup.add_theme_stylebox_override("panel", style_box)
+	
+	# Add to scene and show
+	add_child(popup)
+	popup.popup_centered()
+	
+	# Clean up when closed
+	popup.confirmed.connect(func(): popup.queue_free())
 
 func complete_hyperspace_sequence():
 	"""Complete the hyperspace sequence and return control to player"""

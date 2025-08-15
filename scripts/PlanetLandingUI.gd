@@ -7,6 +7,7 @@ class_name PlanetLandingUI
 
 @onready var shipping_missions_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShippingMissionsButton
 @onready var shipyard_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/ShipyardButton
+@onready var recharge_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/RechargeButton
 @onready var leave_planet_button: Button = $MainContainer/RightPanel/ButtonPanel/ButtonContainer/LeavePlanetButton
 @onready var flavor_text_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/FlavorText
 @onready var planet_name_label: Label = $MainContainer/RightPanel/InfoPanel/InfoContainer/PlanetName
@@ -29,6 +30,7 @@ func _ready():
 	# Connect button signals
 	shipping_missions_button.pressed.connect(_on_shipping_missions_pressed)
 	shipyard_button.pressed.connect(_on_shipyard_pressed)
+	recharge_button.pressed.connect(_on_recharge_pressed)
 	leave_planet_button.pressed.connect(_on_leave_planet_pressed)
 	
 	# Setup gamepad focus
@@ -52,6 +54,7 @@ func setup_gamepad_focus():
 	# Enable focus on buttons
 	shipping_missions_button.focus_mode = Control.FOCUS_ALL
 	shipyard_button.focus_mode = Control.FOCUS_ALL
+	recharge_button.focus_mode = Control.FOCUS_ALL
 	leave_planet_button.focus_mode = Control.FOCUS_ALL
 	
 	# Note: Actual focus neighbors are set up in setup_planet_services()
@@ -90,34 +93,39 @@ func setup_planet_services():
 	"""Setup which services are available on this planet"""
 	var services = current_planet_data.get("services", [])
 	
-	# Check if shipyard is available
+	# Check service availability
 	var has_shipyard = "shipyard" in services
+	var has_recharge = "hyperspace_recharge" in services
 	
-	# Show/hide shipyard button based on availability
+	# Show/hide buttons based on availability
 	shipyard_button.visible = has_shipyard
 	shipyard_button.disabled = not has_shipyard
 	
-	# Setup focus chain based on available services
+	recharge_button.visible = has_recharge
+	recharge_button.disabled = not has_recharge
+	
+	# Build focus chain based on available services
+	var available_buttons = [shipping_missions_button]  # Always available
+	
 	if has_shipyard:
-		print("Shipyard available on this planet")
-		# 3-button chain: Missions -> Shipyard -> Leave
-		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(shipyard_button)
-		shipyard_button.focus_neighbor_top = shipyard_button.get_path_to(shipping_missions_button)
-		shipyard_button.focus_neighbor_bottom = shipyard_button.get_path_to(leave_planet_button)
-		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipyard_button)
+		available_buttons.append(shipyard_button)
+	
+	if has_recharge:
+		available_buttons.append(recharge_button)
+	
+	available_buttons.append(leave_planet_button)  # Always available
+	
+	# Setup focus chain
+	for i in range(available_buttons.size()):
+		var current_button = available_buttons[i]
+		var next_button = available_buttons[(i + 1) % available_buttons.size()]
+		var prev_button = available_buttons[(i - 1 + available_buttons.size()) % available_buttons.size()]
 		
-		# Wrap-around navigation
-		shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
-		leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
-	else:
-		print("No shipyard on this planet")
-		# 2-button chain: Missions -> Leave (skip shipyard)
-		shipping_missions_button.focus_neighbor_bottom = shipping_missions_button.get_path_to(leave_planet_button)
-		leave_planet_button.focus_neighbor_top = leave_planet_button.get_path_to(shipping_missions_button)
-		
-		# Wrap-around navigation
-		shipping_missions_button.focus_neighbor_top = shipping_missions_button.get_path_to(leave_planet_button)
-		leave_planet_button.focus_neighbor_bottom = leave_planet_button.get_path_to(shipping_missions_button)
+		current_button.focus_neighbor_bottom = current_button.get_path_to(next_button)
+		current_button.focus_neighbor_top = current_button.get_path_to(prev_button)
+	
+	print("Services available: ", services)
+	print("Shipyard: ", has_shipyard, " | Recharge: ", has_recharge)
 
 func setup_planet_display():
 	"""Setup the visual elements of the landing interface"""
@@ -180,11 +188,14 @@ func set_planet_flavor_text_with_status():
 	var credits = PlayerData.get_credits()
 	var cargo_space = PlayerData.current_cargo_weight
 	var cargo_capacity = PlayerData.cargo_capacity
+	var current_jumps = PlayerData.get_current_jumps()
+	var max_jumps = PlayerData.get_max_jumps()
 	var active_missions = PlayerData.get_active_missions().size()
 	
 	var status_text = "\n\n═══ PILOT STATUS ═══\n"
 	status_text += "Credits: %s\n" % MissionGenerator.format_credits(credits)
 	status_text += "Cargo: %d/%d tons\n" % [cargo_space, cargo_capacity]
+	status_text += "Hyperspace Jumps: %d/%d\n" % [current_jumps, max_jumps]
 	status_text += "Active Missions: %d" % active_missions
 	
 	flavor_text_label.text = flavor_text + status_text
@@ -472,6 +483,256 @@ func _on_ship_purchased(ship_data: Dictionary):
 	# Refresh the planet display to show updated status
 	setup_planet_display()
 
+func _on_recharge_pressed():
+	"""Handle hyperspace recharge button press"""
+	print("Recharge button pressed")
+	
+	# Check if planet has recharge service
+	var services = current_planet_data.get("services", [])
+	if not "hyperspace_recharge" in services:
+		print("No hyperspace recharge available at this location")
+		return
+	
+	# Show recharge interface
+	show_recharge_interface()
+
+func show_recharge_interface():
+	"""Show the hyperspace recharge interface"""
+	var current_jumps = PlayerData.get_current_jumps()
+	var max_jumps = PlayerData.get_max_jumps()
+	var jumps_needed = PlayerData.get_jumps_needed_for_full()
+	
+	# Check if already at full capacity
+	if jumps_needed <= 0:
+		show_already_full_notification()
+		return
+	
+	# Get recharge cost per jump (from system data or default)
+	var cost_per_jump = get_recharge_cost_per_jump()
+	var max_affordable_jumps = PlayerData.get_credits() / cost_per_jump
+	var available_jumps_to_buy = min(jumps_needed, max_affordable_jumps)
+	
+	if available_jumps_to_buy <= 0:
+		show_insufficient_credits_notification(cost_per_jump)
+		return
+	
+	# Show recharge selection popup
+	show_recharge_selection_popup(available_jumps_to_buy, cost_per_jump, jumps_needed)
+
+func get_recharge_cost_per_jump() -> int:
+	"""Get the cost per jump from system data or default"""
+	var current_system = UniverseManager.get_current_system()
+	var recharge_cost = current_system.get("hyperspace_recharge_cost", 200)
+	return recharge_cost
+
+func show_already_full_notification():
+	"""Show notification when hyperspace drive is already full"""
+	var popup = AcceptDialog.new()
+	popup.title = "HYPERSPACE DRIVE STATUS"
+	popup.size = Vector2(400, 200)
+	
+	var label = Label.new()
+	label.text = "Your hyperspace drive is already at full capacity.\n\nJumps: %d/%d" % [PlayerData.get_current_jumps(), PlayerData.get_max_jumps()]
+	label.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+	label.add_theme_font_size_override("font_size", 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	popup.add_child(label)
+	add_child(popup)
+	popup.popup_centered()
+	popup.confirmed.connect(func(): popup.queue_free())
+
+func show_insufficient_credits_notification(cost_per_jump: int):
+	"""Show notification when player can't afford any jumps"""
+	var popup = AcceptDialog.new()
+	popup.title = "INSUFFICIENT CREDITS"
+	popup.size = Vector2(450, 250)
+	
+	var label = Label.new()
+	label.text = "You don't have enough credits to recharge your hyperspace drive.\n\n"
+	label.text += "Cost per jump: %s credits\n" % MissionGenerator.format_credits(cost_per_jump)
+	label.text += "Your credits: %s" % MissionGenerator.format_credits(PlayerData.get_credits())
+	label.add_theme_color_override("font_color", Color(1, 0.5, 0, 1))
+	label.add_theme_font_size_override("font_size", 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	popup.add_child(label)
+	add_child(popup)
+	popup.popup_centered()
+	popup.confirmed.connect(func(): popup.queue_free())
+
+func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jumps_needed: int):
+	"""Show popup for selecting how many jumps to recharge"""
+	var popup = AcceptDialog.new()
+	popup.title = "HYPERSPACE DRIVE RECHARGE"
+	popup.size = Vector2(500, 400)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 15)
+	
+	# Header
+	var header = Label.new()
+	header.text = "⚡ HYPERSPACE DRIVE RECHARGE"
+	header.add_theme_color_override("font_color", Color(0, 1, 1, 1))
+	header.add_theme_font_size_override("font_size", 20)
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Status
+	var status = Label.new()
+	status.text = "Current Jumps: %d/%d\n" % [PlayerData.get_current_jumps(), PlayerData.get_max_jumps()]
+	status.text += "Cost per Jump: %s credits" % MissionGenerator.format_credits(cost_per_jump)
+	status.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+	status.add_theme_font_size_override("font_size", 14)
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(status)
+	
+	# Recharge options
+	var options_label = Label.new()
+	options_label.text = "Select recharge amount:"
+	options_label.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+	options_label.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(options_label)
+	
+	# Create buttons for different amounts
+	var button_container = VBoxContainer.new()
+	button_container.add_theme_constant_override("separation", 8)
+	
+	# Full recharge button (if possible)
+	if jumps_needed <= max_affordable:
+		var full_button = Button.new()
+		var full_cost = jumps_needed * cost_per_jump
+		full_button.text = "Full Recharge (%d jumps) - %s credits" % [jumps_needed, MissionGenerator.format_credits(full_cost)]
+		full_button.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+		full_button.pressed.connect(func(): 
+			popup.queue_free()
+			perform_recharge(jumps_needed, cost_per_jump)
+		)
+		button_container.add_child(full_button)
+	
+	# Individual amount buttons
+	for i in range(1, min(max_affordable + 1, jumps_needed + 1)):
+		if i == jumps_needed and jumps_needed <= max_affordable:
+			continue  # Skip if we already have a full button
+		
+		var amount_button = Button.new()
+		var amount_cost = i * cost_per_jump
+		var plural = "jump" if i == 1 else "jumps"
+		amount_button.text = "%d %s - %s credits" % [i, plural, MissionGenerator.format_credits(amount_cost)]
+		amount_button.add_theme_color_override("font_color", Color(0, 1, 1, 1))
+		amount_button.pressed.connect(func(): 
+			popup.queue_free()
+			perform_recharge(i, cost_per_jump)
+		)
+		button_container.add_child(amount_button)
+	
+	vbox.add_child(button_container)
+	
+	# Cancel note
+	var cancel_note = Label.new()
+	cancel_note.text = "\nPress OK or ESC to cancel"
+	cancel_note.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1))
+	cancel_note.add_theme_font_size_override("font_size", 12)
+	cancel_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(cancel_note)
+	
+	popup.add_child(vbox)
+	
+	# Style the popup
+	var style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0, 0.1, 0.1, 0.95)
+	style_box.border_color = Color(0, 1, 1, 1)
+	style_box.border_width_left = 2
+	style_box.border_width_right = 2
+	style_box.border_width_top = 2
+	style_box.border_width_bottom = 2
+	popup.add_theme_stylebox_override("panel", style_box)
+	
+	add_child(popup)
+	popup.popup_centered()
+	popup.confirmed.connect(func(): popup.queue_free())
+
+func perform_recharge(jumps: int, cost_per_jump: int):
+	"""Perform the hyperspace recharge transaction"""
+	var result = PlayerData.recharge_hyperspace_jumps(jumps, cost_per_jump)
+	
+	if result.success:
+		show_recharge_success_popup(result)
+		# Refresh the planet display to show updated status
+		setup_planet_display()
+	else:
+		show_recharge_failure_popup(result.message)
+
+func show_recharge_success_popup(result: Dictionary):
+	"""Show success notification for recharge"""
+	var popup = AcceptDialog.new()
+	popup.title = "RECHARGE SUCCESSFUL"
+	popup.size = Vector2(500, 300)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 15)
+	
+	# Header
+	var header = Label.new()
+	header.text = "✅ HYPERSPACE DRIVE RECHARGED"
+	header.add_theme_color_override("font_color", Color(0, 1, 0, 1))
+	header.add_theme_font_size_override("font_size", 20)
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Details
+	var details = Label.new()
+	var jumps_recharged = result.get("jumps_recharged", 0)
+	var cost_paid = result.get("cost_paid", 0)
+	var current_jumps = result.get("current_jumps", 0)
+	var max_jumps = result.get("max_jumps", 0)
+	
+	var plural = "jump" if jumps_recharged == 1 else "jumps"
+	details.text = "Recharged: %d %s\n" % [jumps_recharged, plural]
+	details.text += "Cost: %s credits\n\n" % MissionGenerator.format_credits(cost_paid)
+	details.text += "Hyperspace Status: %d/%d jumps\n\n" % [current_jumps, max_jumps]
+	details.text += "Your hyperspace drive is ready for travel!"
+	
+	details.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1))
+	details.add_theme_font_size_override("font_size", 16)
+	details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(details)
+	
+	popup.add_child(vbox)
+	
+	# Style the popup
+	var style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0, 0.1, 0, 0.95)
+	style_box.border_color = Color(0, 1, 0, 1)
+	style_box.border_width_left = 2
+	style_box.border_width_right = 2
+	style_box.border_width_top = 2
+	style_box.border_width_bottom = 2
+	popup.add_theme_stylebox_override("panel", style_box)
+	
+	add_child(popup)
+	popup.popup_centered()
+	popup.confirmed.connect(func(): popup.queue_free())
+	
+	print("✅ RECHARGE SUCCESSFUL: ", jumps_recharged, " jumps for ", cost_paid, " credits")
+
+func show_recharge_failure_popup(message: String):
+	"""Show failure notification for recharge"""
+	var popup = AcceptDialog.new()
+	popup.title = "RECHARGE FAILED"
+	popup.size = Vector2(400, 200)
+	
+	var label = Label.new()
+	label.text = "❌ " + message
+	label.add_theme_color_override("font_color", Color(1, 0.5, 0, 1))
+	label.add_theme_font_size_override("font_size", 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	popup.add_child(label)
+	add_child(popup)
+	popup.popup_centered()
+	popup.confirmed.connect(func(): popup.queue_free())
+
 func _on_leave_planet_pressed():
 	"""Handle leave planet button press"""
 	print("Leave Planet button pressed")
@@ -515,6 +776,8 @@ func _input(event):
 				_on_shipping_missions_pressed()
 			elif focused_control == shipyard_button:
 				_on_shipyard_pressed()
+			elif focused_control == recharge_button:
+				_on_recharge_pressed()
 			elif focused_control == leave_planet_button:
 				_on_leave_planet_pressed()
 		get_viewport().set_input_as_handled()
@@ -537,7 +800,7 @@ func debug_show_test_landing():
 		"population": 8000000000,
 		"government": "confederation",
 		"tech_level": 5,
-		"services": ["shipyard", "outfitter", "commodity_exchange", "mission_computer"],
+		"services": ["shipyard", "outfitter", "commodity_exchange", "mission_computer", "hyperspace_recharge"],
 		"shipyard": {
 			"available_ships": ["scout_mk1", "cargo_hauler", "interceptor"]
 		}

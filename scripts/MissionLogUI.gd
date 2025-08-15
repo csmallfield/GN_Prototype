@@ -5,14 +5,9 @@
 extends Control
 class_name MissionLogUI
 
-#@onready var status_label: Label = $MainPanel/MainContainer/StatusLabel
-#@onready var active_missions_list: VBoxContainer = $MainPanel/MainContainer/ActiveMissionsScroll/ActiveMissionsList
-#@onready var completed_missions_list: VBoxContainer = $MainPanel/MainContainer/CompletedMissionsScroll/CompletedMissionsList
 @onready var status_label: Label = $MainPanel/MainContainer/StatusLabel
 @onready var active_missions_list: VBoxContainer = $MainPanel/MainContainer/ActiveMissionScroll/ActiveMissionsList
 @onready var completed_missions_list: VBoxContainer = $MainPanel/MainContainer/CompletedMissionsScroll/CompletedMissionsList
-
-
 
 # State management
 var is_visible: bool = false
@@ -31,7 +26,7 @@ func _ready():
 	if not status_label:
 		status_label = get_node_or_null("MainPanel/MainContainer/StatusLabel")
 	if not active_missions_list:
-		active_missions_list = get_node_or_null("MainPanel/MainContainer/ActiveMissionsScroll/ActiveMissionsList")
+		active_missions_list = get_node_or_null("MainPanel/MainContainer/ActiveMissionScroll/ActiveMissionsList")
 	if not completed_missions_list:
 		completed_missions_list = get_node_or_null("MainPanel/MainContainer/CompletedMissionsScroll/CompletedMissionsList")
 	
@@ -40,6 +35,7 @@ func _ready():
 	PlayerData.mission_completed.connect(_on_mission_completed)
 	PlayerData.credits_changed.connect(_on_credits_changed)
 	PlayerData.cargo_changed.connect(_on_cargo_changed)
+	PlayerData.jumps_changed.connect(_on_jumps_changed)
 	
 	print("Mission Log UI initialized - Nodes ready: ", status_label != null, active_missions_list != null, completed_missions_list != null)
 
@@ -84,11 +80,15 @@ func update_status_display():
 	var credits = PlayerData.get_credits()
 	var current_cargo = PlayerData.current_cargo_weight
 	var cargo_capacity = PlayerData.cargo_capacity
+	var current_jumps = PlayerData.get_current_jumps()
+	var max_jumps = PlayerData.get_max_jumps()
 	
-	var status_text = "Credits: %s | Cargo: %d/%d tons" % [
+	var status_text = "Credits: %s | Cargo: %d/%d tons | Jumps: %d/%d" % [
 		MissionGenerator.format_credits(credits),
 		current_cargo,
-		cargo_capacity
+		cargo_capacity,
+		current_jumps,
+		max_jumps
 	]
 	
 	status_label.text = status_text
@@ -225,6 +225,11 @@ func _on_credits_changed(_new_amount: int):
 
 func _on_cargo_changed(_current_weight: int, _max_capacity: int):
 	"""Called when cargo changes - update status if visible"""
+	if is_visible:
+		update_status_display()
+
+func _on_jumps_changed(_current_jumps: int, _max_jumps: int):
+	"""Called when jumps change - update status if visible"""
 	if is_visible:
 		update_status_display()
 

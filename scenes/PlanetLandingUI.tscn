@@ -63,7 +63,7 @@ theme_override_constants/separation = 10
 [node name="InfoPanel" type="Panel" parent="MainContainer/RightPanel"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 3.0
+size_flags_stretch_ratio = 2.3
 theme_override_styles/panel = ExtResource("2_teb1l")
 
 [node name="InfoContainer" type="VBoxContainer" parent="MainContainer/RightPanel/InfoPanel"]
@@ -83,7 +83,7 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 1, 0, 1)
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 24
 text = "Planet Name
 "
 vertical_alignment = 1
@@ -94,7 +94,7 @@ custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "Flavor text would go here to describe the planet, the flora and fauna one would find and the types of patrons and citizens one would meet if they were to visit the Spica System or any other system one would select on the main map.\\n\\nIt should be somewhat brief but informative"
 autowrap_mode = 3
 
@@ -120,19 +120,26 @@ theme_override_constants/separation = 20
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "Shipping Missions"
 
 [node name="ShipyardButton" type="Button" parent="MainContainer/RightPanel/ButtonPanel/ButtonContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "Shipyard"
+
+[node name="RechargeButton" type="Button" parent="MainContainer/RightPanel/ButtonPanel/ButtonContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "⚡ Recharge Jump Drive"
 
 [node name="LeavePlanetButton" type="Button" parent="MainContainer/RightPanel/ButtonPanel/ButtonContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0, 1, 0, 1)
-theme_override_font_sizes/font_size = 20
-text = "Leave Planet"
+theme_override_font_sizes/font_size = 18
+text = "Leave"

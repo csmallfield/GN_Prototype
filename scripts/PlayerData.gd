@@ -8,11 +8,16 @@ signal credits_changed(new_amount)
 signal mission_accepted(mission_data)
 signal mission_completed(mission_data)
 signal cargo_changed(current_weight, max_capacity)
+signal jumps_changed(current_jumps, max_jumps)
 
 # Player Stats
 var credits: int = 50000
 var cargo_capacity: int = 100  # tons
 var current_cargo_weight: int = 0
+
+# Hyperspace Jump System
+var hyperspace_jump_capacity: int = 3  # Maximum jumps this ship can store
+var current_hyperspace_jumps: int = 3  # Current jumps available
 
 # Mission Data
 var active_missions: Array[Dictionary] = []
@@ -25,6 +30,7 @@ func _ready():
 	print("PlayerData singleton initialized")
 	print("Starting credits: ", credits)
 	print("Cargo capacity: ", cargo_capacity, " tons")
+	print("Hyperspace jumps: ", current_hyperspace_jumps, "/", hyperspace_jump_capacity)
 
 # =============================================================================
 # CREDITS MANAGEMENT
@@ -50,6 +56,86 @@ func subtract_credits(amount: int) -> bool:
 func get_credits() -> int:
 	"""Get current credit amount"""
 	return credits
+
+# =============================================================================
+# HYPERSPACE JUMP MANAGEMENT
+# =============================================================================
+
+func get_current_jumps() -> int:
+	"""Get current available hyperspace jumps"""
+	return current_hyperspace_jumps
+
+func get_max_jumps() -> int:
+	"""Get maximum hyperspace jump capacity"""
+	return hyperspace_jump_capacity
+
+func can_hyperspace_jump() -> bool:
+	"""Check if player has jumps available"""
+	return current_hyperspace_jumps > 0
+
+func consume_hyperspace_jump() -> bool:
+	"""Consume one hyperspace jump. Returns true if successful."""
+	if current_hyperspace_jumps > 0:
+		current_hyperspace_jumps -= 1
+		jumps_changed.emit(current_hyperspace_jumps, hyperspace_jump_capacity)
+		print("Hyperspace jump consumed. Remaining: ", current_hyperspace_jumps, "/", hyperspace_jump_capacity)
+		return true
+	else:
+		print("No hyperspace jumps remaining!")
+		return false
+
+func set_jump_capacity(new_capacity: int):
+	"""Set maximum jump capacity (called when changing ships)"""
+	hyperspace_jump_capacity = new_capacity
+	
+	# Fill to capacity when getting a new ship
+	current_hyperspace_jumps = hyperspace_jump_capacity
+	
+	jumps_changed.emit(current_hyperspace_jumps, hyperspace_jump_capacity)
+	print("Jump capacity set to: ", hyperspace_jump_capacity, " (filled to capacity)")
+
+func recharge_hyperspace_jumps(jumps_to_add: int, cost_per_jump: int) -> Dictionary:
+	"""Recharge hyperspace jumps. Returns result dictionary with success/failure info."""
+	var total_cost = jumps_to_add * cost_per_jump
+	var max_possible_jumps = hyperspace_jump_capacity - current_hyperspace_jumps
+	
+	# Validate input
+	if jumps_to_add <= 0:
+		return {"success": false, "message": "Invalid jump amount"}
+	
+	if current_hyperspace_jumps >= hyperspace_jump_capacity:
+		return {"success": false, "message": "Jump drive already at full capacity"}
+	
+	if credits < cost_per_jump:
+		return {"success": false, "message": "Insufficient credits for even one jump"}
+	
+	# Calculate how many jumps we can actually buy
+	var affordable_jumps = min(jumps_to_add, credits / cost_per_jump)
+	affordable_jumps = min(affordable_jumps, max_possible_jumps)
+	
+	if affordable_jumps <= 0:
+		return {"success": false, "message": "Cannot afford any jumps"}
+	
+	# Perform the transaction
+	var actual_cost = affordable_jumps * cost_per_jump
+	subtract_credits(actual_cost)
+	current_hyperspace_jumps += affordable_jumps
+	
+	jumps_changed.emit(current_hyperspace_jumps, hyperspace_jump_capacity)
+	
+	print("Recharged ", affordable_jumps, " jumps for ", actual_cost, " credits")
+	
+	return {
+		"success": true,
+		"jumps_recharged": affordable_jumps,
+		"cost_paid": actual_cost,
+		"current_jumps": current_hyperspace_jumps,
+		"max_jumps": hyperspace_jump_capacity
+	}
+
+func get_jumps_needed_for_full() -> int:
+	"""Get number of jumps needed to fill to capacity"""
+	return hyperspace_jump_capacity - current_hyperspace_jumps
 
 # =============================================================================
 # CARGO MANAGEMENT
@@ -83,8 +169,6 @@ func remove_cargo(weight: int):
 # =============================================================================
 # MISSION MANAGEMENT
 # =============================================================================
-
-# Replace the accept_mission function in PlayerData.gd with this updated version:
 
 func accept_mission(mission_data: Dictionary) -> bool:
 	"""Accept a new mission if player has cargo space"""
@@ -171,6 +255,7 @@ func debug_print_status():
 	print("=== PLAYER STATUS ===")
 	print("Credits: ", credits)
 	print("Cargo: ", current_cargo_weight, "/", cargo_capacity, " tons")
+	print("Hyperspace jumps: ", current_hyperspace_jumps, "/", hyperspace_jump_capacity)
 	print("Active missions: ", active_missions.size())
 	print("Completed missions: ", completed_missions.size())
 	print("=====================")
