@@ -76,7 +76,7 @@
 		  "type": "planet", 
 		  "description": "The red planet, now a bustling colony world",
 		  "flavor_text": "Once a barren red wasteland, Mars has been transformed into humanity's first major colony world. Vast terraforming projects have created breathable atmospheres in the dome cities, while the rust-colored deserts hide mining operations that fuel the colonial economy. New Martian culture blends frontier independence with cutting-edge technology.",
-		  "position": { "x": 800, "y": 500 },
+		  "position": { "x": 1600, "y": 600 },
 		  "scale": 0.8,
 		  "can_land": true,
 		  "services": [ "outfitter", "commodity_exchange", "mission_computer", "hyperspace_recharge"],

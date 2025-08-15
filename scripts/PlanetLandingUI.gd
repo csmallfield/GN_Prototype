@@ -604,10 +604,9 @@ func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jump
 		var full_cost = jumps_needed * cost_per_jump
 		full_button.text = "Full Recharge (%d jumps) - %s credits" % [jumps_needed, MissionGenerator.format_credits(full_cost)]
 		full_button.add_theme_color_override("font_color", Color(0, 1, 0, 1))
-		full_button.pressed.connect(func(): 
-			popup.queue_free()
-			perform_recharge(jumps_needed, cost_per_jump)
-		)
+		
+		# Fixed: Capture variables by value using callable with bind
+		full_button.pressed.connect(perform_recharge_and_close.bind(popup, jumps_needed, cost_per_jump))
 		button_container.add_child(full_button)
 	
 	# Individual amount buttons
@@ -620,10 +619,9 @@ func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jump
 		var plural = "jump" if i == 1 else "jumps"
 		amount_button.text = "%d %s - %s credits" % [i, plural, MissionGenerator.format_credits(amount_cost)]
 		amount_button.add_theme_color_override("font_color", Color(0, 1, 1, 1))
-		amount_button.pressed.connect(func(): 
-			popup.queue_free()
-			perform_recharge(i, cost_per_jump)
-		)
+		
+		# Fixed: Capture variables by value using callable with bind
+		amount_button.pressed.connect(perform_recharge_and_close.bind(popup, i, cost_per_jump))
 		button_container.add_child(amount_button)
 	
 	vbox.add_child(button_container)
@@ -651,6 +649,11 @@ func show_recharge_selection_popup(max_affordable: int, cost_per_jump: int, jump
 	add_child(popup)
 	popup.popup_centered()
 	popup.confirmed.connect(func(): popup.queue_free())
+
+func perform_recharge_and_close(popup: AcceptDialog, jumps: int, cost_per_jump: int):
+	"""Helper function to perform recharge and close popup"""
+	popup.queue_free()
+	perform_recharge(jumps, cost_per_jump)
 
 func perform_recharge(jumps: int, cost_per_jump: int):
 	"""Perform the hyperspace recharge transaction"""
