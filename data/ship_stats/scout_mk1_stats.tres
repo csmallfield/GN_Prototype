@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ShipStats" load_steps=2 format=3 uid="uid://bywvty8td72th"]
+
+[ext_resource type="Script" uid="uid://4e8rtmn8siab" path="res://scripts/ShipStats.gd" id="1_0wxka"]
+
+[resource]
+script = ExtResource("1_0wxka")
+max_hull = 80.0
+max_shields = 40.0
+shield_recharge_rate = 8.0
+armor_rating = 0.0
+mass = 8.0
+inertia_dampening = 0.1
+weapon_slots = 1
+turret_turn_rate = 3.0
+metadata/_custom_type_script = "uid://4e8rtmn8siab"
