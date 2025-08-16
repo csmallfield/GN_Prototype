@@ -1,5 +1,6 @@
 # =============================================================================
 # HYPERSPACE MAP - Visual galaxy map for system navigation with gamepad support
+# Now reads positions and connections directly from universe.json!
 # =============================================================================
 # HyperspaceMap.gd
 extends Control
@@ -44,7 +45,7 @@ var line_width = 2.0
 var map_canvas: Control
 
 func _ready():
-	setup_systems()
+	load_systems_from_universe_data()
 	current_system = UniverseManager.current_system_id
 	
 	# Wait for nodes to be ready
@@ -125,41 +126,45 @@ func _on_map_focus_exited():
 	"""Handle when map loses focus"""
 	map_has_focus = false
 
-func setup_systems():
-	"""Define system positions and connections for the map"""
-	# Define system positions (distributed across the map)
+func load_systems_from_universe_data():
+	"""Load system positions and connections from universe.json data"""
+	print("Loading systems from universe data...")
+	
+	# Get systems data from UniverseManager
+	systems_data = UniverseManager.universe_data.get("systems", {})
+	
+	if systems_data.is_empty():
+		push_error("No systems data found in universe.json!")
+		return
+	
+	# Clear existing data
+	system_positions.clear()
+	system_connections.clear()
+	
+	# Define map area for position calculations
 	var map_width = 480
 	var map_height = 500
 	var margin = 50
 	
-	system_positions = {
-		"sol_system": Vector2(margin + map_width * 0.3, margin + map_height * 0.5),
-		"alpha_centauri": Vector2(margin + map_width * 0.45, margin + map_height * 0.4),
-		"vega_system": Vector2(margin + map_width * 0.2, margin + map_height * 0.3),
-		"sirius_system": Vector2(margin + map_width * 0.6, margin + map_height * 0.3),
-		"rigel_system": Vector2(margin + map_width * 0.7, margin + map_height * 0.6),
-		"arcturus_system": Vector2(margin + map_width * 0.1, margin + map_height * 0.7),
-		"deneb_system": Vector2(margin + map_width * 0.4, margin + map_height * 0.8),
-		"aldebaran_system": Vector2(margin + map_width * 0.8, margin + map_height * 0.4),
-		"antares_system": Vector2(margin + map_width * 0.6, margin + map_height * 0.7),
-		"capella_system": Vector2(margin + map_width * 0.2, margin + map_height * 0.6)
-	}
+	# Load positions and connections from JSON
+	for system_id in systems_data:
+		var system_data = systems_data[system_id]
+		
+		# Load map position (as percentages 0.0-1.0)
+		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
+		var actual_position = Vector2(
+			margin + map_width * map_pos.x,
+			margin + map_height * map_pos.y
+		)
+		system_positions[system_id] = actual_position
+		
+		# Load connections directly from JSON
+		var connections = system_data.get("connections", [])
+		system_connections[system_id] = connections
+		
+		print("Loaded system: ", system_id, " at ", map_pos, " with ", connections.size(), " connections")
 	
-	# Define connections (simple network, 2-3 connections per system)
-	system_connections = {
-		"sol_system": ["alpha_centauri", "vega_system"],
-		"alpha_centauri": ["sol_system", "sirius_system", "rigel_system"],
-		"vega_system": ["sol_system", "arcturus_system", "capella_system"],
-		"sirius_system": ["alpha_centauri", "aldebaran_system"],
-		"rigel_system": ["alpha_centauri", "antares_system", "aldebaran_system"],
-		"arcturus_system": ["vega_system", "capella_system", "deneb_system"],
-		"deneb_system": ["arcturus_system", "capella_system", "antares_system"],
-		"aldebaran_system": ["sirius_system", "rigel_system"],
-		"antares_system": ["rigel_system", "deneb_system"],
-		"capella_system": ["vega_system", "arcturus_system", "deneb_system"]
-	}
-	
-	systems_data = UniverseManager.universe_data.systems
+	print("Loaded ", systems_data.size(), " systems from universe data")
 	
 	# Build list of available systems for gamepad navigation
 	build_available_systems_list()
@@ -213,9 +218,6 @@ func _draw_map():
 		Vector2(margin, margin),
 		canvas_size - Vector2(margin * 2, margin * 2)
 	)
-	
-	# Draw background
-	# map_canvas.draw_rect(draw_area, bg_color)
 	
 	# Scale system positions to fit within the drawing area
 	var scaled_positions = scale_system_positions_to_area(draw_area)
@@ -454,7 +456,8 @@ func show_map():
 	# Hide minimap when hyperspace map is open
 	hide_minimap()
 	
-	setup_systems()
+	# Reload systems data in case universe.json was modified
+	load_systems_from_universe_data()
 	current_system = UniverseManager.current_system_id
 	selected_system = ""
 	system_index = -1
@@ -558,3 +561,11 @@ func _input(event):
 func get_focused_control() -> Control:
 	"""Get the currently focused control"""
 	return get_viewport().gui_get_focus_owner()
+
+# =============================================================================
+# COMPATIBILITY FUNCTIONS - For other parts of code that use hardcoded positions
+# =============================================================================
+
+func get_system_positions() -> Dictionary:
+	"""Return current system positions for compatibility with other code"""
+	return system_positions

@@ -5,8 +5,9 @@
 	  "description": "The birthplace of humanity",
 	  "flavor_text": "Home to billions of humans across multiple worlds and stations. This system represents the heart of human civilization, where Earth's blue oceans still sparkle alongside the red deserts of terraformed Mars.",
 	  "background": "res://backgrounds/sol_nebula.png",
-	  "connections": ["alpha_centauri", "vega_system"],
+	  "connections": ["alpha_centauri", "vega_system", "27B-6_system"],
 	  "hyperspace_recharge_cost": 200,
+	  "map_position": {"x": 0.3, "y": 0.5},
 	  "starfield": {
 		"BaseColor": [0.0, 0.0, 0.0],
 		"StarLayers_Star_Density": 1.0,
@@ -76,7 +77,7 @@
 		  "type": "planet", 
 		  "description": "The red planet, now a bustling colony world",
 		  "flavor_text": "Once a barren red wasteland, Mars has been transformed into humanity's first major colony world. Vast terraforming projects have created breathable atmospheres in the dome cities, while the rust-colored deserts hide mining operations that fuel the colonial economy. New Martian culture blends frontier independence with cutting-edge technology.",
-		  "position": { "x": 1600, "y": 600 },
+		  "position": { "x": 800, "y": 500 },
 		  "scale": 0.8,
 		  "can_land": true,
 		  "services": [ "outfitter", "commodity_exchange", "mission_computer", "hyperspace_recharge"],
@@ -120,6 +121,7 @@
 	  "flavor_text": "The first stepping stone beyond Sol, this system buzzes with the energy of pioneers and explorers. New Geneva orbits Proxima Centauri as a testament to human determination to spread among the stars.",
 	  "background": "res://backgrounds/alpha_centauri_nebula.png",
 	  "connections": ["sol_system", "sirius_system", "rigel_system"],
+	  "map_position": {"x": 0.45, "y": 0.4},
 	  "starfield": {
 		"BaseColor": [0.05, 0.1, 0.15],
 		"StarLayers_Star_Density": 1.2,
@@ -236,6 +238,7 @@
 	  "description": "A frontier trading hub",
 	  "flavor_text": "Rough miners and independent traders call this system home, drawn by rich mineral deposits and minimal government oversight. The bright blue-white star Vega illuminates a hardscrabble frontier where fortunes are made and lost daily.",
 	  "connections": ["sol_system", "arcturus_system", "capella_system"],
+	  "map_position": {"x": 0.2, "y": 0.3},
 	  "starfield": {
 		"BaseColor": [0.0, 0.05, 0.1],
 		"StarLayers_Star_Density": 1.5,
@@ -316,6 +319,7 @@
 	  "description": "A wealthy commercial system",
 	  "flavor_text": "The brightest star in Earth's night sky hosts one of humanity's most prosperous worlds. Corporate executives and luxury merchants conduct business beneath the brilliant white light of this binary star system.",
 	  "connections": ["alpha_centauri", "aldebaran_system"],
+	  "map_position": {"x": 0.6, "y": 0.3},
 	  "starfield": {
 		"BaseColor": [0.1, 0.1, 0.15],
 		"StarLayers_Star_Density": 0.8,
@@ -354,6 +358,7 @@
 	  "description": "An industrial manufacturing center",
 	  "flavor_text": "Massive shipyards orbit this blue supergiant star, churning out vessels for the Confederation fleet. The constant hammering of construction echoes through space as Rigel Forge works around the clock.",
 	  "connections": ["alpha_centauri", "antares_system", "aldebaran_system"],
+	  "map_position": {"x": 0.7, "y": 0.6},
 	  "traffic": {
 		"spawn_frequency": 10.0,
 		"max_npcs": 4,
@@ -418,6 +423,7 @@
 	  "description": "A quiet research system",
 	  "flavor_text": "Scientists and researchers pursue cutting-edge discoveries in the serene environment around this ancient red giant star. The system's isolation makes it perfect for sensitive experiments that require minimal interference.",
 	  "connections": ["vega_system", "capella_system", "deneb_system"],
+	  "map_position": {"x": 0.1, "y": 0.7},
 	  "traffic": {
 		"spawn_frequency": 25.0,
 		"max_npcs": 1,
@@ -450,6 +456,7 @@
 	  "description": "A remote frontier outpost",
 	  "flavor_text": "On the very edge of known space, this distant white supergiant marks the boundary of human exploration. Only the most adventurous traders and explorers brave the long journey to this isolated outpost.",
 	  "connections": ["arcturus_system", "capella_system", "antares_system"],
+	  "map_position": {"x": 0.4, "y": 0.8},
 	  "traffic": {
 		"spawn_frequency": 35.0,
 		"max_npcs": 1,
@@ -470,10 +477,33 @@
 		  "position": { "x": 800, "y": 800 },
 		  "sprite": "res://sprites/stations/mining_station.png",
 		  "can_land": true,
-		  "services": ["commodity_exchange", "bar", "hyperspace_recharge"],
+		  "services": ["commodity_exchange", "bar"],
 		  "government": "independent",
 		  "tech_level": 2,
 		  "population": 8000
+		}
+	  ]
+	},
+	"27B-6_system": {
+	  "name": "27B-6",
+	  "description": "An uninhabited star system",
+	  "flavor_text": "Nothing to see here.",
+	  "connections": ["sol_system", "antares_system"],
+	  "map_position": {"x": 0.46, "y": 0.65},
+	  "traffic": {
+		"spawn_frequency": 35.0,
+		"max_npcs": 1,
+		"spawn_frequency_variance": 15.0,
+		"npc_config": {
+		  "thrust_power": 350.0,
+		  "rotation_speed": 2.0,
+		  "max_velocity": 300.0,
+		  "visit_duration_range": [8.0, 20.0]
+		}
+	  },
+	  "celestial_bodies": [
+		{
+		  
 		}
 	  ]
 	},
@@ -482,6 +512,7 @@
 	  "description": "A strategic military system",
 	  "flavor_text": "The Confederation's military might is on full display in this heavily fortified system around the orange giant star. Patrol fleets launch regularly from the naval base to maintain order throughout human space.",
 	  "connections": ["sirius_system", "rigel_system"],
+	  "map_position": {"x": 0.8, "y": 0.4},
 	  "traffic": {
 		"spawn_frequency": 7.0,
 		"max_npcs": 5,
@@ -513,7 +544,8 @@
 	  "name": "Antares System",
 	  "description": "A dangerous pirate haven",
 	  "flavor_text": "This red supergiant system attracts smugglers, pirates, and others who prefer to operate outside the law. Confederation patrols are few and far between, making it a haven for the galaxy's most wanted.",
-	  "connections": ["rigel_system", "deneb_system"],
+	  "connections": ["rigel_system", "deneb_system", "27B-6_system"],
+	  "map_position": {"x": 0.6, "y": 0.7},
 	  "starfield": {
 		"BaseColor": [0.15, 0.05, 0.0],
 		"StarLayers_Star_Density": 2.0,
@@ -552,6 +584,7 @@
 	  "description": "An agricultural supply system",
 	  "flavor_text": "Vast hydroponic farms and agricultural stations orbit this yellow giant star, feeding the growing population of human space. The system's peaceful nature and abundant food production make it a crucial link in the supply chain.",
 	  "connections": ["vega_system", "arcturus_system", "deneb_system"],
+	  "map_position": {"x": 0.2, "y": 0.6},
 	  "traffic": {
 		"spawn_frequency": 14.0,
 		"max_npcs": 3,
@@ -572,7 +605,7 @@
 		  "position": { "x": -600, "y": -600 },
 		  "sprite": "res://sprites/stations/mining_station.png",
 		  "can_land": true,
-		  "services": ["commodity_exchange", "bar", "hyperspace_recharge"],
+		  "services": ["commodity_exchange", "bar"],
 		  "government": "confederation",
 		  "tech_level": 4,
 		  "population": 75000

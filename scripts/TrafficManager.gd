@@ -599,23 +599,22 @@ func get_entry_direction_from_system(origin_system: String) -> Vector2:
 	return Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
 
 func get_system_positions() -> Dictionary:
-	"""Get system positions (same as player ship and hyperspace map)"""
+	"""Get system positions from universe.json data"""
+	var positions = {}
+	var systems_data = UniverseManager.universe_data.get("systems", {})
 	var map_width = 480
-	var map_height = 500
+	var map_height = 500 
 	var margin = 50
 	
-	return {
-		"sol_system": Vector2(margin + map_width * 0.3, margin + map_height * 0.5),
-		"alpha_centauri": Vector2(margin + map_width * 0.45, margin + map_height * 0.4),
-		"vega_system": Vector2(margin + map_width * 0.2, margin + map_height * 0.3),
-		"sirius_system": Vector2(margin + map_width * 0.6, margin + map_height * 0.3),
-		"rigel_system": Vector2(margin + map_width * 0.7, margin + map_height * 0.6),
-		"arcturus_system": Vector2(margin + map_width * 0.1, margin + map_height * 0.7),
-		"deneb_system": Vector2(margin + map_width * 0.4, margin + map_height * 0.8),
-		"aldebaran_system": Vector2(margin + map_width * 0.8, margin + map_height * 0.4),
-		"antares_system": Vector2(margin + map_width * 0.6, margin + map_height * 0.7),
-		"capella_system": Vector2(margin + map_width * 0.2, margin + map_height * 0.6)
-	}
+	for system_id in systems_data:
+		var system_data = systems_data[system_id]
+		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
+		positions[system_id] = Vector2(
+			margin + map_width * map_pos.x,
+			margin + map_height * map_pos.y
+		)
+	
+	return positions
 
 func reset_spawn_timer():
 	"""Reset the spawn timer with variance"""

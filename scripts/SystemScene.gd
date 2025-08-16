@@ -1,5 +1,5 @@
 # =============================================================================
-# SYSTEM SCENE - Now with Starfield Configuration Loading
+# SYSTEM SCENE - Now with Starfield Configuration Loading and Empty System Support
 # =============================================================================
 # SystemScene.gd
 extends Node2D
@@ -78,16 +78,71 @@ func clear_system():
 		child.queue_free()
 
 func spawn_celestial_bodies(bodies_data: Array):
-	for body_data in bodies_data:
+	"""Spawn celestial bodies, with validation for empty/invalid entries"""
+	print("SystemScene: Spawning celestial bodies. Count: ", bodies_data.size())
+	
+	var spawned_count = 0
+	
+	for i in range(bodies_data.size()):
+		var body_data = bodies_data[i]
+		
+		# Validate celestial body data
+		if not is_valid_celestial_body(body_data):
+			print("SystemScene: Skipping invalid celestial body at index ", i, ": ", body_data)
+			continue
+		
+		# Create and configure celestial body
 		var celestial_body = preload("res://scenes/CelestialBody.tscn").instantiate()
 		celestial_body.celestial_data = body_data
-		celestial_body.position = Vector2(body_data.position.x, body_data.position.y)
+		
+		# Set position safely
+		var position_data = body_data.get("position", {"x": 0, "y": 0})
+		celestial_body.position = Vector2(position_data.x, position_data.y)
 		
 		# Apply scale if specified for procedural planets
 		if body_data.has("scale") and body_data.get("type") == "planet":
 			celestial_body.scale = Vector2(body_data.scale, body_data.scale)
 		
 		celestial_bodies_container.add_child(celestial_body)
+		spawned_count += 1
+	
+	if spawned_count == 0:
+		print("SystemScene: No celestial bodies spawned - this is an empty system")
+	else:
+		print("SystemScene: Successfully spawned ", spawned_count, " celestial bodies")
+
+func is_valid_celestial_body(body_data) -> bool:
+	"""Check if celestial body data is valid and complete"""
+	# Must be a dictionary
+	if not body_data is Dictionary:
+		return false
+	
+	# Must not be empty
+	if body_data.is_empty():
+		return false
+	
+	# Must have required fields
+	var required_fields = ["id", "name", "type"]
+	for field in required_fields:
+		if not body_data.has(field) or body_data[field] == "":
+			print("SystemScene: Celestial body missing required field: ", field)
+			return false
+	
+	# Must have position data
+	if not body_data.has("position"):
+		print("SystemScene: Celestial body missing position data")
+		return false
+	
+	var position_data = body_data["position"]
+	if not position_data is Dictionary:
+		print("SystemScene: Celestial body position is not a dictionary")
+		return false
+	
+	if not position_data.has("x") or not position_data.has("y"):
+		print("SystemScene: Celestial body position missing x or y coordinates")
+		return false
+	
+	return true
 
 func pause_all_planet_animations():
 	"""Pause animations on all planets (performance optimization when leaving system)"""
