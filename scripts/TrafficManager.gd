@@ -90,13 +90,15 @@ func spawn_npc():
 		print("TrafficManager: Spawned NPC at ", spawn_data.position, " from ", spawn_data.origin_system)
 
 func create_npc_ship() -> NPCShip:
-	"""Create and configure a new NPC ship"""
 	var npc_ship_scene = load("res://scenes/NPCShip.tscn")
 	if not npc_ship_scene:
 		push_error("Could not load NPCShip.tscn")
 		return null
 	
 	var npc_ship = npc_ship_scene.instantiate()
+	
+	# Enable new AI for testing (50% chance)
+	npc_ship.use_simplified_ai = randf() < 0.5
 	
 	# Configure with system settings
 	var npc_config = system_traffic_config.get("npc_config", default_config.npc_config)

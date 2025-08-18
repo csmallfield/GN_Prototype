@@ -18,6 +18,13 @@ class_name NPCShip
 var npc_config: Dictionary = {}
 var ship_hue_shift: float = 0.0
 
+var hull: float = 100.0
+var max_hull: float = 100.0
+var shields: float = 50.0
+var max_shields: float = 50.0
+var simplified_brain: SimplifiedNPCBrain = null
+var use_simplified_ai: bool = false  # Toggle for testing
+
 # AI State Management
 enum AIState {
 	HYPERSPACE_ENTRY,    # Coming in from hyperspace
@@ -79,6 +86,32 @@ var arrival_distance: float = 100.0  # How close to get to targets
 var turn_rate_modifier: float = 1.0
 var thrust_modifier: float = 1.0
 
+
+# Add these helper methods
+func get_hull_percent() -> float:
+	if max_hull <= 0:
+		return 0
+	return hull / max_hull
+
+func get_current_state_name() -> String:
+	if use_simplified_ai and simplified_brain:
+		return simplified_brain.current_goal
+	else:
+		return AIState.keys()[current_ai_state]
+
+func take_damage(amount: float, attacker: Node2D = null):
+	"""Take damage from weapons"""
+	var shield_damage = min(amount, shields)
+	shields -= shield_damage
+	amount -= shield_damage
+	
+	if amount > 0:
+		hull -= amount
+	
+	if hull <= 0:
+		cleanup_and_remove()
+		
+
 func _ready():
 	# Add to NPC group for minimap detection
 	add_to_group("npc_ships")
@@ -93,7 +126,33 @@ func _ready():
 	# Connect to system changes to clean up if needed
 	UniverseManager.system_changed.connect(_on_system_changed)
 	
+	# Set up combat stats
+	max_hull = 100.0
+	hull = max_hull
+	max_shields = 30.0
+	shields = max_shields
+	
+	# Optionally add simplified AI
+	if use_simplified_ai:
+		setup_simplified_ai()
+	
 	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
+
+func setup_simplified_ai():
+	"""Add the new simplified AI brain"""
+	simplified_brain = SimplifiedNPCBrain.new()
+	add_child(simplified_brain)
+	
+	# Create a default archetype if none exists
+	var archetype = NPCArchetype.new()
+	archetype.archetype_name = "Generic"
+	archetype.aggression = randf_range(0.2, 0.6)
+	archetype.bravery = randf_range(0.3, 0.7)
+	archetype.flee_threshold = 0.3
+	
+	simplified_brain.archetype = archetype
+	simplified_brain.faction = Government.Faction.INDEPENDENT
+
 
 func apply_hue_shift():
 	"""Apply random hue shift to make ships visually distinct"""
@@ -139,29 +198,60 @@ func start_hyperspace_entry(entry_position: Vector2, entry_velocity: Vector2, de
 	print("NPC starting hyperspace entry at: ", entry_position)
 
 func _integrate_forces(state):
-	match current_ai_state:
-		AIState.HYPERSPACE_ENTRY:
-			handle_hyperspace_entry(state)
-		AIState.FLYING_TO_TARGET:
-			handle_flying_to_target(state)
-		AIState.VISITING_BODY:
-			handle_visiting_body(state)
-		AIState.ORBITING_BODY:
-			handle_orbiting_body(state)
-		AIState.MEETING_SHIP:
-			handle_meeting_ship(state)
-		AIState.COMMUNICATING:
-			handle_communicating(state)
-		AIState.FOLLOWING_SHIP:
-			handle_following_ship(state)
-		AIState.FORMATION_FLYING:
-			handle_formation_flying(state)
-		AIState.FLYING_TO_EXIT:
-			handle_flying_to_exit(state)
-		AIState.HYPERSPACE_EXIT:
-			handle_hyperspace_exit(state)
-	
-	limit_velocity(state)
+	if use_simplified_ai and simplified_brain:
+		# Use simplified AI
+		simplified_brain.think(get_physics_process_delta_time())
+		handle_simplified_ai_movement(state)
+	else:
+		# Use existing state machine
+		match current_ai_state:
+			AIState.HYPERSPACE_ENTRY:
+				handle_hyperspace_entry(state)
+			AIState.FLYING_TO_TARGET:
+				handle_flying_to_target(state)
+			AIState.VISITING_BODY:
+				handle_visiting_body(state)
+			AIState.ORBITING_BODY:
+				handle_orbiting_body(state)
+			AIState.MEETING_SHIP:
+				handle_meeting_ship(state)
+			AIState.COMMUNICATING:
+				handle_communicating(state)
+			AIState.FOLLOWING_SHIP:
+				handle_following_ship(state)
+			AIState.FORMATION_FLYING:
+				handle_formation_flying(state)
+			AIState.FLYING_TO_EXIT:
+				handle_flying_to_exit(state)
+			AIState.HYPERSPACE_EXIT:
+				handle_hyperspace_exit(state)
+		
+		limit_velocity(state)
+		pass
+
+func handle_simplified_ai_movement(state):
+	"""Handle movement based on simplified AI decisions"""
+	match simplified_brain.current_goal:
+		"flee":
+			if simplified_brain.flee_target:
+				var flee_direction = (global_position - simplified_brain.flee_target.global_position).normalized()
+				state.apply_central_force(flee_direction * thrust_power)
+				engine_particles.emitting = true
+		
+		"attack":
+			if simplified_brain.target:
+				var attack_direction = (simplified_brain.target.global_position - global_position).normalized()
+				state.apply_central_force(attack_direction * thrust_power * 0.8)
+				engine_particles.emitting = true
+				# TODO: Fire weapons at target
+		
+		"wander":
+			# Continue with existing behavior
+			if current_ai_state == AIState.FLYING_TO_TARGET:
+				handle_flying_to_target(state)
+			else:
+				handle_flying_to_exit(state)
+
 
 func handle_hyperspace_entry(state):
 	"""Handle deceleration from hyperspace entry"""

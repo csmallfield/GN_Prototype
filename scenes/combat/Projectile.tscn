@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://8yrjwjtx5le2"]
+
+[ext_resource type="Script" uid="uid://o58jeawo2eai" path="res://scripts/combat/Projectile.gd" id="1_rgbsv"]
+[ext_resource type="Texture2D" uid="uid://dltwk7cyo2t0y" path="res://sprites/weapons/laser_bolt.png" id="2_1jo0v"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kw6bp"]
+size = Vector2(16, 4)
+
+[node name="Projectile" type="Area2D"]
+script = ExtResource("1_rgbsv")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_1jo0v")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_kw6bp")

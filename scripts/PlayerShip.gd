@@ -13,12 +13,6 @@ var hyperspace_thrust_power: float = 1500.0
 var hyperspace_entry_speed: float = 800.0
 
 
-#@export var thrust_power: float = 500.0
-#@export var rotation_speed: float = 3.0
-#@export var max_velocity: float = 400.0
-#@export var hyperspace_thrust_power: float = 1500.0
-#@export var hyperspace_entry_speed: float = 800.0
-
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles
 @onready var interaction_area = $InteractionArea
@@ -54,6 +48,17 @@ var entry_position: Vector2 = Vector2.ZERO
 var entry_target: Vector2 = Vector2.ZERO
 var jump_direction: Vector2 = Vector2.ZERO
 var map_direction: Vector2 = Vector2.ZERO  # Store the direction from the map
+
+var hull: float = 100.0
+var max_hull: float = 100.0
+var shields: float = 50.0
+var max_shields: float = 50.0
+var shield_recharge_rate: float = 8.0
+var is_destroyed: bool = false
+
+# Weapon system
+var weapons: Array[Weapon] = []
+var primary_weapon: Weapon
 
 func _ready():
 	UniverseManager.player_ship = self
@@ -693,3 +698,71 @@ func create_flash_overlay():
 	canvas_layer.add_child(flash_overlay)
 	
 	print("Flash overlay created in CanvasLayer")
+	
+	# Initialize combat stats from ship data
+	var ship_stats = ShipManager.get_ship_stats(ShipManager.current_ship_id)
+	if ship_stats:
+		max_hull = ship_stats.get("max_hull", 100.0)
+		hull = max_hull
+		max_shields = ship_stats.get("max_shields", 50.0)
+		shields = max_shields
+		shield_recharge_rate = ship_stats.get("shield_recharge_rate", 8.0)
+	
+	# Add a basic weapon
+	add_weapon(preload("res://scenes/combat/LaserCannon.tscn"))
+
+func add_weapon(weapon_scene: PackedScene):
+	var weapon = weapon_scene.instantiate()
+	add_child(weapon)
+	weapons.append(weapon)
+	if not primary_weapon:
+		primary_weapon = weapon
+
+func _process(delta):
+	if is_destroyed:
+		return
+	
+	# Shield regeneration
+	if shields < max_shields:
+		shields = min(shields + shield_recharge_rate * delta, max_shields)
+	
+	# Handle firing
+	if Input.is_action_pressed("fire_primary"):  # Add this action to project settings
+		fire_weapons()
+
+func fire_weapons():
+	if not primary_weapon:
+		return
+	
+	# Fire toward mouse or in facing direction
+	var target_direction = Vector2.UP.rotated(rotation)
+	primary_weapon.fire(target_direction, Government.Faction.CONFEDERATION)
+
+func take_damage(amount: float, attacker: Node2D = null):
+	if is_destroyed:
+		return
+	
+	# Apply to shields first
+	var shield_damage = min(amount, shields)
+	shields -= shield_damage
+	amount -= shield_damage
+	
+	# Remainder goes to hull
+	if amount > 0:
+		hull -= amount
+	
+	print("Took damage! Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
+	
+	# Check destruction
+	if hull <= 0:
+		destroy()
+
+func destroy():
+	is_destroyed = true
+	print("Ship destroyed!")
+	
+	# Create explosion effect
+	# ... explosion particles ...
+	
+	# For player, trigger game over
+	# For NPCs, remove from scene
