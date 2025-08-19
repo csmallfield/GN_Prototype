@@ -109,6 +109,8 @@ func get_current_state_name() -> String:
 
 func take_damage(amount: float, attacker: Node2D = null):
 	"""Take damage from weapons"""
+	print("*** NPC TAKING DAMAGE *** Ship: ", name, " Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
+	
 	# Shields first
 	var shield_damage = min(amount, shields)
 	shields -= shield_damage
@@ -118,10 +120,11 @@ func take_damage(amount: float, attacker: Node2D = null):
 	if amount > 0:
 		hull -= amount
 	
-	print("NPC took damage! Hull: ", hull, "/", max_hull)
+	print("NPC status after damage - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
 	
 	# Check if destroyed
 	if hull <= 0:
+		print("*** NPC DESTROYED ***")
 		destroy()
 	
 	# Alert the AI brain about damage
@@ -130,16 +133,16 @@ func take_damage(amount: float, attacker: Node2D = null):
 		if simplified_brain.current_goal not in ["flee", "attack"]:
 			simplified_brain.goal_lock_timer = 0  # Allow immediate re-evaluation
 			simplified_brain.flee_target = attacker
+			print("NPC alerting AI brain about attack from: ", attacker.name)
 
-# Update these parts of NPCShip.gd
 
 func _ready():
 	# Add to NPC group for minimap detection
 	add_to_group("npc_ships")
 	
-	# : Set collision layers for combat to work!
-	collision_layer = 1  # Ships are on layer 1
-	collision_mask = 5   # Ships can collide with layers 1 (other ships) and 3 (projectiles)
+	# FIXED: Set collision layers for combat to work!
+	collision_layer = 1    # Ships are on layer 1 (bit 0 = value 1)
+	collision_mask = 5     # Ships + Projectiles: 1 + 4 = 5
 	
 	# Set random hue shift for visual variety
 	ship_hue_shift = randf() * 360.0
@@ -157,10 +160,7 @@ func _ready():
 	max_shields = 30.0
 	shields = max_shields
 	
-	# DON'T setup AI here - let TrafficManager do it after instantiation
-	# This prevents the "no archetype" warning
-	
-	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
+	print("NPCShip collision setup: layer=", collision_layer, " mask=", collision_mask)
 
 func setup_simplified_ai():
 	"""Add the simplified AI brain - only call this if no brain exists"""
@@ -329,6 +329,7 @@ func handle_simplified_ai_movement(state):
 				handle_flying_to_target(state)
 			else:
 				handle_flying_to_exit(state)
+
 
 
 func handle_hyperspace_entry(state):
@@ -550,7 +551,7 @@ func handle_flying_to_exit(state):
 	navigate_to_position_relaxed(state, target_position)
 
 func handle_orbiting_body(state):
-	"""Orbit around a celestial body"""
+	"""Orbit around a celestial body - with better exit conditions"""
 	if not target_celestial_body:
 		transition_to_state(AIState.FLYING_TO_EXIT)
 		return
@@ -565,10 +566,39 @@ func handle_orbiting_body(state):
 	# Navigate to orbital position
 	navigate_to_position_relaxed(state, orbital_pos)
 	
-	# Finish orbiting after duration
-	if visit_timer >= visit_duration:
-		print("NPC finished orbiting, heading to exit")
-		transition_to_state(AIState.FLYING_TO_EXIT)
+	# FIXED: Multiple exit conditions for more variety
+	var should_exit = false
+	
+	# Time-based exit (reduced duration)
+	if visit_timer >= visit_duration * 0.7:  # Exit earlier
+		should_exit = true
+		print("NPC finished orbiting (time), heading to exit")
+	
+	# Random chance to leave early (15% per second after 2 seconds)
+	elif visit_timer > 2.0 and randf() < 0.15 * get_physics_process_delta_time():
+		should_exit = true
+		print("NPC randomly decided to stop orbiting")
+	
+	# Player proximity (get excited and leave)
+	var player = UniverseManager.player_ship
+	if player:
+		var distance_to_player = global_position.distance_to(player.global_position)
+		if distance_to_player < 800 and randf() < 0.3 * get_physics_process_delta_time():
+			should_exit = true
+			print("NPC noticed player nearby, leaving orbit")
+	
+	if should_exit:
+		# Randomly choose next activity
+		var next_action = randf()
+		if next_action < 0.6:
+			transition_to_state(AIState.FLYING_TO_EXIT)
+		else:
+			# Go to a different celestial body
+			choose_target_celestial_body()
+			if target_celestial_body:
+				transition_to_state(AIState.FLYING_TO_TARGET)
+			else:
+				transition_to_state(AIState.FLYING_TO_EXIT)
 
 func handle_meeting_ship(state):
 	"""Fly to meet another NPC for communication"""

@@ -1,4 +1,6 @@
-# Complete replacement for Weapon.gd
+# =============================================================================
+# FIXED WEAPON.GD - Proper projectile direction handling
+# =============================================================================
 
 extends Node2D
 class_name Weapon
@@ -39,18 +41,21 @@ func fire(target_direction: Vector2, owner_faction: Government.Faction = Governm
 	
 	# Add spread
 	var spread = randf_range(-spread_angle, spread_angle)
-	var fire_direction = target_direction.rotated(spread)
+	var fire_direction = target_direction.rotated(spread).normalized()
 	
-	# Position and velocity
+	# FIXED: Set both velocity and rotation correctly
 	projectile.velocity = fire_direction * projectile_speed
 	projectile.rotation = fire_direction.angle()
 	
-	# Add to scene at owner's position
-	owner_ship.get_tree().root.add_child(projectile)
-	projectile.global_position = owner_ship.global_position
+	# Position at weapon/ship position with slight forward offset
+	var spawn_offset = fire_direction * 25.0  # Spawn slightly in front of ship
+	
+	# Add to scene
+	owner_ship.get_tree().current_scene.add_child(projectile)
+	projectile.global_position = owner_ship.global_position + spawn_offset
 	
 	# Set cooldown
 	cooldown = 1.0 / fire_rate
 	
-	print("Weapon fired by: ", owner_ship.name)
+	print("Weapon fired by: ", owner_ship.name, " in direction: ", fire_direction)
 	return true

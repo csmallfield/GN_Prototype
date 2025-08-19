@@ -65,8 +65,40 @@ func _ready():
 	interaction_area.body_entered.connect(_on_interaction_area_entered)
 	interaction_area.body_exited.connect(_on_interaction_area_exited)
 	
+	# FIXED: Set collision layers properly for combat
+	collision_layer = 1    # Ships are on layer 1 (bit 0 = value 1)
+	collision_mask = 6     # Can collide with Planets(2) + Projectiles(4) = 6
+	
+	# IMPORTANT: Enable the main collision shape for combat
+	var collision_shape = get_node_or_null("CollisionShape2D")
+	if collision_shape:
+		collision_shape.disabled = false  # Make sure it's enabled for combat
+		print("PlayerShip collision shape enabled")
+	else:
+		push_error("PlayerShip has no CollisionShape2D!")
+	
+	# Set interaction area layers too
+	if interaction_area:
+		interaction_area.collision_layer = 1  # Also on Ships layer
+		interaction_area.collision_mask = 2   # Only detect Planets for landing
+	
 	# Create flash overlay for hyperspace effect
 	create_flash_overlay()
+	
+	# Initialize combat stats from ship data
+	var ship_stats = ShipManager.get_ship_stats(ShipManager.current_ship_id)
+	if ship_stats:
+		max_hull = ship_stats.get("max_hull", 100.0)
+		hull = max_hull
+		max_shields = ship_stats.get("max_shields", 50.0)
+		shields = max_shields
+		shield_recharge_rate = ship_stats.get("shield_recharge_rate", 8.0)
+	
+	# Add a basic weapon
+	add_weapon(preload("res://scenes/combat/LaserCannon.tscn"))
+	
+	print("PlayerShip collision setup: layer=", collision_layer, " mask=", collision_mask)
+
 
 func _integrate_forces(state):
 	if hyperspace_state == HyperspaceState.NORMAL:
@@ -744,17 +776,23 @@ func fire_weapons():
 	if not primary_weapon:
 		return
 	
-	# Get mouse position for aiming
-	var mouse_pos = get_global_mouse_position()
-	var fire_direction = (mouse_pos - global_position).normalized()
+	# FIXED: Fire in the direction the ship is facing
+	# Ship's forward direction is Vector2.UP rotated by ship's rotation
+	var fire_direction = Vector2.UP.rotated(rotation)
+	
+	print("Player firing in ship direction: ", fire_direction, " (ship rotation: ", rad_to_deg(rotation), "°)")
 	
 	# Fire the weapon
 	if primary_weapon.fire(fire_direction, Government.Faction.CONFEDERATION):
-		print("Player fired weapon")
+		print("Player weapon fired successfully")
+	else:
+		print("Player weapon on cooldown")
 		
 func take_damage(amount: float, attacker: Node2D = null):
 	if is_destroyed:
 		return
+	
+	print("*** PLAYER TAKING DAMAGE *** Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
 	
 	# Apply to shields first
 	var shield_damage = min(amount, shields)
@@ -765,7 +803,11 @@ func take_damage(amount: float, attacker: Node2D = null):
 	if amount > 0:
 		hull -= amount
 	
-	print("Took damage! Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
+	print("Player status after damage - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
+	
+	# Visual feedback - could add screen shake, red flash, etc.
+	if hull < max_hull * 0.3:
+		print("*** PLAYER CRITICAL DAMAGE - LOW HULL! ***")
 	
 	# Check destruction
 	if hull <= 0:
