@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NPCArchetype" load_steps=2 format=3 uid="uid://b32iciahfj5h8"]
+
+[ext_resource type="Script" uid="uid://cfswaacxlyapc" path="res://scripts/ai/NPCArchetype.gd" id="1_4dsa3"]
+
+[resource]
+script = ExtResource("1_4dsa3")
+archetype_name = "Coward"
+aggression = 0.0
+bravery = 0.1
+greed = 0.5
+loyalty = 0.2
+flee_threshold = 0.8
+attack_weak_targets = 0.0
+behavior_weights = {
+"attack": 0.0,
+"escort": 0.1,
+"flee": 1.0,
+"patrol": 0.0,
+"trade": 0.6
+}
+metadata/_custom_type_script = "uid://cfswaacxlyapc"

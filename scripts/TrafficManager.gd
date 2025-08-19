@@ -12,6 +12,8 @@ var current_npcs: Array[NPCShip] = []
 var spawn_timer: float = 0.0
 var system_traffic_config: Dictionary = {}
 var active: bool = false
+# Add archetype loading
+var available_archetypes: Dictionary = {}
 
 # Default traffic configuration
 var default_config = {
@@ -29,12 +31,26 @@ var default_config = {
 func _ready():
 	add_to_group("traffic_manager")
 	
+	# Load archetypes
+	load_archetypes()
+	
 	# Connect to system changes
 	UniverseManager.system_changed.connect(_on_system_changed)
 	
 	# Initialize with current system
 	_on_system_changed(UniverseManager.current_system_id)
-
+	
+	
+func load_archetypes():
+	"""Load all available archetypes from the data folder"""
+	available_archetypes = {
+		"trader": preload("res://data/ai_archetypes/trader_archetype.tres"),
+		"pirate": preload("res://data/ai_archetypes/pirate_archetype.tres"),
+		"military": preload("res://data/ai_archetypes/military_archetype.tres"),
+		"coward": preload("res://data/ai_archetypes/coward_archetype.tres")
+	}
+	print("Loaded ", available_archetypes.size(), " archetypes")
+		
 func _process(delta):
 	if not active:
 		return
@@ -97,14 +113,97 @@ func create_npc_ship() -> NPCShip:
 	
 	var npc_ship = npc_ship_scene.instantiate()
 	
-	# Enable new AI for testing (50% chance)
-	npc_ship.use_simplified_ai = randf() < 0.5
+	# Always use simplified AI now
+	npc_ship.use_simplified_ai = true
+	
+	# Choose and apply archetype based on system or random
+	var archetype = choose_archetype_for_system()
+	var faction = choose_faction_for_archetype(archetype)
+	npc_ship.configure_with_archetype(archetype, faction)
 	
 	# Configure with system settings
 	var npc_config = system_traffic_config.get("npc_config", default_config.npc_config)
 	npc_ship.configure_npc(npc_config)
 	
 	return npc_ship
+
+func choose_archetype_for_system() -> NPCArchetype:
+	"""Choose an appropriate archetype based on the current system"""
+	var system_id = UniverseManager.current_system_id
+	
+	# System-specific spawning rules
+	match system_id:
+		"antares_system":  # Pirate haven
+			if randf() < 0.7:  # 70% pirates
+				return available_archetypes.get("pirate")
+		"aldebaran_system":  # Military system
+			if randf() < 0.6:  # 60% military
+				return available_archetypes.get("military")
+	
+	# Default weighted selection
+	var roll = randf()
+	if roll < 0.5:  # 50% traders
+		return available_archetypes.get("trader", create_default_archetype())
+	elif roll < 0.7:  # 20% cowards
+		return available_archetypes.get("coward", create_default_archetype())
+	elif roll < 0.85:  # 15% military
+		return available_archetypes.get("military", create_default_archetype())
+	else:  # 15% pirates
+		return available_archetypes.get("pirate", create_default_archetype())
+
+func choose_faction_for_archetype(archetype: NPCArchetype) -> Government.Faction:
+	"""Choose appropriate faction based on archetype"""
+	if not archetype:
+		return Government.Faction.INDEPENDENT
+	
+	match archetype.archetype_name.to_lower():
+		"pirate":
+			return Government.Faction.PIRATES
+		"military":
+			return Government.Faction.CONFEDERATION
+		"trader", "coward":
+			return Government.Faction.MERCHANT_GUILD if randf() < 0.3 else Government.Faction.INDEPENDENT
+		_:
+			return Government.Faction.INDEPENDENT
+
+func create_default_archetype() -> NPCArchetype:
+	"""Create a default archetype if none are loaded"""
+	var default = NPCArchetype.new()
+	default.archetype_name = "Default"
+	default.aggression = 0.3
+	default.bravery = 0.5
+	default.flee_threshold = 0.3
+	return default
+
+# Add debug spawning method
+func spawn_hostile_npc_near_player():
+	"""Debug method to spawn a hostile NPC near the player"""
+	var player = UniverseManager.player_ship
+	if not player:
+		print("No player ship found")
+		return
+	
+	var npc_ship = create_npc_ship()
+	if not npc_ship:
+		return
+	
+	# Force pirate archetype
+	var pirate_archetype = available_archetypes.get("pirate", create_default_archetype())
+	npc_ship.configure_with_archetype(pirate_archetype, Government.Faction.PIRATES)
+	
+	# Position near player
+	var spawn_offset = Vector2(randf_range(-500, 500), randf_range(-500, 500))
+	if spawn_offset.length() < 200:
+		spawn_offset = spawn_offset.normalized() * 300
+	
+	npc_ship.global_position = player.global_position + spawn_offset
+	npc_ship.linear_velocity = Vector2.ZERO
+	
+	# Add to scene
+	get_parent().add_child(npc_ship)
+	current_npcs.append(npc_ship)
+	
+	print("Spawned hostile pirate near player at ", npc_ship.global_position)
 
 func spawn_initial_npcs():
 	"""Spawn NPCs already in the system when player arrives"""

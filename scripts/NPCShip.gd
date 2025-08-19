@@ -86,6 +86,14 @@ var arrival_distance: float = 100.0  # How close to get to targets
 var turn_rate_modifier: float = 1.0
 var thrust_modifier: float = 1.0
 
+# Weapon system
+var weapon: Weapon = null
+
+# Smooth movement
+var movement_smoothing: float = 0.85
+var last_thrust: float = 0.0
+var last_turn: float = 0.0
+
 
 # Add these helper methods
 func get_hull_percent() -> float:
@@ -101,16 +109,27 @@ func get_current_state_name() -> String:
 
 func take_damage(amount: float, attacker: Node2D = null):
 	"""Take damage from weapons"""
+	# Shields first
 	var shield_damage = min(amount, shields)
 	shields -= shield_damage
 	amount -= shield_damage
 	
+	# Then hull
 	if amount > 0:
 		hull -= amount
 	
+	print("NPC took damage! Hull: ", hull, "/", max_hull)
+	
+	# Check if destroyed
 	if hull <= 0:
-		cleanup_and_remove()
-		
+		destroy()
+	
+	# Alert the AI brain about damage
+	if simplified_brain and attacker:
+		# If we're not already fleeing or attacking, consider this threat
+		if simplified_brain.current_goal not in ["flee", "attack"]:
+			simplified_brain.goal_lock_timer = 0  # Allow immediate re-evaluation
+			simplified_brain.flee_target = attacker
 
 func _ready():
 	# Add to NPC group for minimap detection
@@ -132,14 +151,19 @@ func _ready():
 	max_shields = 30.0
 	shields = max_shields
 	
-	# Optionally add simplified AI
+		# Always add simplified AI
 	if use_simplified_ai:
 		setup_simplified_ai()
 	
+	# Add a weapon
+	setup_weapon()
+	
 	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
 
+# Add these functions to your existing NPCShip.gd
+
 func setup_simplified_ai():
-	"""Add the new simplified AI brain"""
+	"""Add the simplified AI brain"""
 	simplified_brain = SimplifiedNPCBrain.new()
 	add_child(simplified_brain)
 	
@@ -153,6 +177,64 @@ func setup_simplified_ai():
 	simplified_brain.archetype = archetype
 	simplified_brain.faction = Government.Faction.INDEPENDENT
 
+func setup_weapon():
+	"""Add a basic weapon to the NPC"""
+	var weapon_scene = preload("res://scenes/combat/LaserCannon.tscn")
+	if weapon_scene:
+		weapon = weapon_scene.instantiate()
+		add_child(weapon)
+
+func configure_with_archetype(archetype: NPCArchetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
+	"""Configure this NPC with an archetype and faction"""
+	if not simplified_brain:
+		setup_simplified_ai()
+	
+	if simplified_brain:
+		simplified_brain.archetype = archetype
+		simplified_brain.faction = ship_faction
+		print("NPC configured as: ", archetype.archetype_name, " faction: ", Government.Faction.keys()[ship_faction])
+
+func handle_ai_movement(state: PhysicsDirectBodyState2D, command: Dictionary):
+	"""Handle movement based on AI brain commands"""
+	var thrust = command.get("thrust", 0.0)
+	var turn = command.get("turn", 0.0)
+	var should_fire = command.get("fire", false)
+	
+	# Smooth the inputs to reduce wobbling
+	last_thrust = lerp(last_thrust, thrust, movement_smoothing)
+	last_turn = lerp(last_turn, turn, movement_smoothing)
+	
+	# Apply rotation with dead zone
+	if abs(last_turn) > 0.05:  # Dead zone for turning
+		state.angular_velocity = last_turn * rotation_speed
+	else:
+		state.angular_velocity *= 0.9  # Damping when not turning
+	
+	# Apply thrust
+	if last_thrust > 0.1:  # Dead zone for thrust
+		var thrust_vector = Vector2(0, -thrust_power * last_thrust).rotated(rotation)
+		state.apply_central_force(thrust_vector)
+		engine_particles.emitting = true
+	else:
+		engine_particles.emitting = false
+	
+	# Fire weapon if commanded
+	if should_fire and weapon and weapon.can_fire():
+		var target = simplified_brain.target
+		if target:
+			var fire_direction = (target.global_position - global_position).normalized()
+			var faction = simplified_brain.faction if simplified_brain else Government.Faction.INDEPENDENT
+			weapon.fire(fire_direction, faction)
+	
+	# Limit velocity
+	if state.linear_velocity.length() > max_velocity:
+		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
+
+func destroy():
+	"""Ship destroyed"""
+	print("NPC Ship destroyed!")
+	# TODO: Add explosion effect
+	cleanup_and_remove()
 
 func apply_hue_shift():
 	"""Apply random hue shift to make ships visually distinct"""
@@ -187,6 +269,8 @@ func configure_npc(config: Dictionary):
 		var duration_range = config.visit_duration_range
 		visit_duration = randf_range(duration_range[0], duration_range[1])
 
+
+
 func start_hyperspace_entry(entry_position: Vector2, entry_velocity: Vector2, destination_system: String = ""):
 	"""Initialize NPC coming in from hyperspace"""
 	global_position = entry_position
@@ -199,35 +283,20 @@ func start_hyperspace_entry(entry_position: Vector2, entry_velocity: Vector2, de
 
 func _integrate_forces(state):
 	if use_simplified_ai and simplified_brain:
-		# Use simplified AI
+		# Let the brain think
 		simplified_brain.think(get_physics_process_delta_time())
-		handle_simplified_ai_movement(state)
+		
+		# Get movement commands from brain
+		var command = simplified_brain.get_movement_command()
+		handle_ai_movement(state, command)
 	else:
-		# Use existing state machine
+		# Use old state machine (your existing code)
 		match current_ai_state:
 			AIState.HYPERSPACE_ENTRY:
 				handle_hyperspace_entry(state)
-			AIState.FLYING_TO_TARGET:
-				handle_flying_to_target(state)
-			AIState.VISITING_BODY:
-				handle_visiting_body(state)
-			AIState.ORBITING_BODY:
-				handle_orbiting_body(state)
-			AIState.MEETING_SHIP:
-				handle_meeting_ship(state)
-			AIState.COMMUNICATING:
-				handle_communicating(state)
-			AIState.FOLLOWING_SHIP:
-				handle_following_ship(state)
-			AIState.FORMATION_FLYING:
-				handle_formation_flying(state)
-			AIState.FLYING_TO_EXIT:
-				handle_flying_to_exit(state)
-			AIState.HYPERSPACE_EXIT:
-				handle_hyperspace_exit(state)
+			# ... rest of your existing state machine code ...
 		
 		limit_velocity(state)
-		pass
 
 func handle_simplified_ai_movement(state):
 	"""Handle movement based on simplified AI decisions"""

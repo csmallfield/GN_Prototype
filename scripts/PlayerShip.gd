@@ -343,7 +343,16 @@ func _input(event):
 		# Debug: Test mission system
 		if OS.is_debug_build():
 			debug_test_mission_system()
+	if event.is_action_pressed("ui_text_submit") or (event is InputEventKey and event.pressed and event.keycode == KEY_G):
+		spawn_hostile_npc_for_testing()
 
+func spawn_hostile_npc_for_testing():
+	"""Debug method to spawn a hostile NPC nearby"""
+	var traffic_manager = get_tree().get_first_node_in_group("traffic_manager")
+	if traffic_manager and traffic_manager.has_method("spawn_hostile_npc_near_player"):
+		traffic_manager.spawn_hostile_npc_near_player()
+		print("Debug: Spawned hostile NPC")
+		
 func interact_with_target():
 	if current_target.has_method("interact"):
 		current_target.interact()
