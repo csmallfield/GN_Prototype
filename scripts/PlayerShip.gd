@@ -352,7 +352,6 @@ func spawn_hostile_npc_for_testing():
 	if traffic_manager and traffic_manager.has_method("spawn_hostile_npc_near_player"):
 		traffic_manager.spawn_hostile_npc_near_player()
 		print("Debug: Spawned hostile NPC")
-		
 func interact_with_target():
 	if current_target.has_method("interact"):
 		current_target.interact()
@@ -739,14 +738,20 @@ func _process(delta):
 	if Input.is_action_pressed("fire_primary"):  # Add this action to project settings
 		fire_weapons()
 
+# Fix the fire_weapons function in PlayerShip.gd
+
 func fire_weapons():
 	if not primary_weapon:
 		return
 	
-	# Fire toward mouse or in facing direction
-	var target_direction = Vector2.UP.rotated(rotation)
-	primary_weapon.fire(target_direction, Government.Faction.CONFEDERATION)
-
+	# Get mouse position for aiming
+	var mouse_pos = get_global_mouse_position()
+	var fire_direction = (mouse_pos - global_position).normalized()
+	
+	# Fire the weapon
+	if primary_weapon.fire(fire_direction, Government.Faction.CONFEDERATION):
+		print("Player fired weapon")
+		
 func take_damage(amount: float, attacker: Node2D = null):
 	if is_destroyed:
 		return

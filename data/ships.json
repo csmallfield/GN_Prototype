@@ -29,15 +29,15 @@
 	  "description": "A heavy cargo vessel designed for maximum storage capacity. Slower than lighter ships but can carry massive payloads across multiple systems.",
 	  "manufacturer": "Industrial Shipworks",
 	  "class": "Heavy Freighter",
-	  "cost": 120000,
+	  "cost": 5000,
 	  "graphics": {
 		"sprite": "res://sprites/ships/cargo_hauler.png",
 		"thumbnail": "res://sprites/ships/thumbnails/cargo_hauler_thumb.png",
 		"large_view": "res://sprites/ships/large/cargo_hauler_large.png"
 	  },
 	  "stats": {
-		"thrust_power": 250.0,
-		"rotation_speed": 1.5,
+		"thrust_power": 100.0,
+		"rotation_speed": 1.0,
 		"max_velocity": 200.0,
 		"hyperspace_thrust_power": 1200.0,
 		"hyperspace_entry_speed": 650.0,
@@ -52,7 +52,7 @@
 	  "description": "A sleek, fast courier vessel built for speed and agility. Limited cargo space but unmatched velocity and maneuverability.",
 	  "manufacturer": "Apex Engineering",
 	  "class": "Courier",
-	  "cost": 85000,
+	  "cost": 5000,
 	  "graphics": {
 		"sprite": "res://sprites/ships/interceptor.png",
 		"thumbnail": "res://sprites/ships/thumbnails/interceptor_thumb.png",

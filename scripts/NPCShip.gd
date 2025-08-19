@@ -131,9 +131,15 @@ func take_damage(amount: float, attacker: Node2D = null):
 			simplified_brain.goal_lock_timer = 0  # Allow immediate re-evaluation
 			simplified_brain.flee_target = attacker
 
+# Update these parts of NPCShip.gd
+
 func _ready():
 	# Add to NPC group for minimap detection
 	add_to_group("npc_ships")
+	
+	# : Set collision layers for combat to work!
+	collision_layer = 1  # Ships are on layer 1
+	collision_mask = 5   # Ships can collide with layers 1 (other ships) and 3 (projectiles)
 	
 	# Set random hue shift for visual variety
 	ship_hue_shift = randf() * 360.0
@@ -151,32 +157,38 @@ func _ready():
 	max_shields = 30.0
 	shields = max_shields
 	
-		# Always add simplified AI
-	if use_simplified_ai:
-		setup_simplified_ai()
-	
-	# Add a weapon
-	setup_weapon()
+	# DON'T setup AI here - let TrafficManager do it after instantiation
+	# This prevents the "no archetype" warning
 	
 	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
 
-# Add these functions to your existing NPCShip.gd
-
 func setup_simplified_ai():
-	"""Add the simplified AI brain"""
+	"""Add the simplified AI brain - only call this if no brain exists"""
+	if simplified_brain:
+		return  # Already has a brain
+		
 	simplified_brain = SimplifiedNPCBrain.new()
 	add_child(simplified_brain)
 	
-	# Create a default archetype if none exists
-	var archetype = NPCArchetype.new()
-	archetype.archetype_name = "Generic"
-	archetype.aggression = randf_range(0.2, 0.6)
-	archetype.bravery = randf_range(0.3, 0.7)
-	archetype.flee_threshold = 0.3
-	
-	simplified_brain.archetype = archetype
-	simplified_brain.faction = Government.Faction.INDEPENDENT
+	# Don't create default archetype here - let configure_with_archetype handle it
 
+func configure_with_archetype(archetype: NPCArchetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
+	"""Configure this NPC with an archetype and faction"""
+	# Create brain if needed
+	if not simplified_brain:
+		simplified_brain = SimplifiedNPCBrain.new()
+		add_child(simplified_brain)
+	
+	# Configure immediately, don't wait
+	simplified_brain.archetype = archetype
+	simplified_brain.faction = ship_faction
+	
+	# Add weapon here
+	if not weapon:
+		setup_weapon()
+	
+	print("NPC configured as: ", archetype.archetype_name, " faction: ", Government.Faction.keys()[ship_faction])
+	
 func setup_weapon():
 	"""Add a basic weapon to the NPC"""
 	var weapon_scene = preload("res://scenes/combat/LaserCannon.tscn")
@@ -184,15 +196,17 @@ func setup_weapon():
 		weapon = weapon_scene.instantiate()
 		add_child(weapon)
 
-func configure_with_archetype(archetype: NPCArchetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
-	"""Configure this NPC with an archetype and faction"""
-	if not simplified_brain:
-		setup_simplified_ai()
-	
+func _integrate_forces(state):
+	# FORCE use of simplified AI for all NPCs
 	if simplified_brain:
-		simplified_brain.archetype = archetype
-		simplified_brain.faction = ship_faction
-		print("NPC configured as: ", archetype.archetype_name, " faction: ", Government.Faction.keys()[ship_faction])
+		# Use new AI brain (even if archetype isn't set yet)
+		simplified_brain.think(get_physics_process_delta_time())
+		var command = simplified_brain.get_movement_command()
+		handle_ai_movement(state, command)
+	else:
+		# Fallback: just limit velocity if no brain yet
+		limit_velocity(state)
+		return
 
 func handle_ai_movement(state: PhysicsDirectBodyState2D, command: Dictionary):
 	"""Handle movement based on AI brain commands"""
@@ -229,6 +243,17 @@ func handle_ai_movement(state: PhysicsDirectBodyState2D, command: Dictionary):
 	# Limit velocity
 	if state.linear_velocity.length() > max_velocity:
 		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
+
+func start_hyperspace_exit():
+	"""Start the hyperspace exit sequence for AI-controlled exit"""
+	if use_simplified_ai:
+		# Clean way to exit for new AI
+		print("NPC initiating hyperspace exit")
+		cleanup_and_remove()
+	else:
+		# Use old system's hyperspace exit
+		transition_to_state(AIState.HYPERSPACE_EXIT)
+
 
 func destroy():
 	"""Ship destroyed"""
@@ -281,22 +306,6 @@ func start_hyperspace_entry(entry_position: Vector2, entry_velocity: Vector2, de
 	
 	print("NPC starting hyperspace entry at: ", entry_position)
 
-func _integrate_forces(state):
-	if use_simplified_ai and simplified_brain:
-		# Let the brain think
-		simplified_brain.think(get_physics_process_delta_time())
-		
-		# Get movement commands from brain
-		var command = simplified_brain.get_movement_command()
-		handle_ai_movement(state, command)
-	else:
-		# Use old state machine (your existing code)
-		match current_ai_state:
-			AIState.HYPERSPACE_ENTRY:
-				handle_hyperspace_entry(state)
-			# ... rest of your existing state machine code ...
-		
-		limit_velocity(state)
 
 func handle_simplified_ai_movement(state):
 	"""Handle movement based on simplified AI decisions"""

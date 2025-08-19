@@ -113,17 +113,16 @@ func create_npc_ship() -> NPCShip:
 	
 	var npc_ship = npc_ship_scene.instantiate()
 	
-	# Always use simplified AI now
-	npc_ship.use_simplified_ai = true
-	
-	# Choose and apply archetype based on system or random
-	var archetype = choose_archetype_for_system()
-	var faction = choose_faction_for_archetype(archetype)
-	npc_ship.configure_with_archetype(archetype, faction)
-	
-	# Configure with system settings
+	# Configure with system settings first
 	var npc_config = system_traffic_config.get("npc_config", default_config.npc_config)
 	npc_ship.configure_npc(npc_config)
+	
+	# Choose archetype and faction
+	var archetype = choose_archetype_for_system()
+	var faction = choose_faction_for_archetype(archetype)
+	
+	# Configure with archetype AFTER instantiation but BEFORE adding to scene
+	npc_ship.call_deferred("configure_with_archetype", archetype, faction)
 	
 	return npc_ship
 
@@ -166,16 +165,9 @@ func choose_faction_for_archetype(archetype: NPCArchetype) -> Government.Faction
 		_:
 			return Government.Faction.INDEPENDENT
 
-func create_default_archetype() -> NPCArchetype:
-	"""Create a default archetype if none are loaded"""
-	var default = NPCArchetype.new()
-	default.archetype_name = "Default"
-	default.aggression = 0.3
-	default.bravery = 0.5
-	default.flee_threshold = 0.3
-	return default
 
-# Add debug spawning method
+# Update spawn_hostile_npc_near_player in TrafficManager.gd
+
 func spawn_hostile_npc_near_player():
 	"""Debug method to spawn a hostile NPC near the player"""
 	var player = UniverseManager.player_ship
@@ -183,12 +175,23 @@ func spawn_hostile_npc_near_player():
 		print("No player ship found")
 		return
 	
-	var npc_ship = create_npc_ship()
-	if not npc_ship:
+	var npc_ship_scene = load("res://scenes/NPCShip.tscn")
+	if not npc_ship_scene:
 		return
+		
+	var npc_ship = npc_ship_scene.instantiate()
 	
-	# Force pirate archetype
-	var pirate_archetype = available_archetypes.get("pirate", create_default_archetype())
+	# Create aggressive pirate archetype
+	var pirate_archetype = available_archetypes.get("pirate")
+	if not pirate_archetype:
+		pirate_archetype = NPCArchetype.new()
+		pirate_archetype.archetype_name = "Pirate"
+		pirate_archetype.aggression = 0.9
+		pirate_archetype.bravery = 0.8
+		pirate_archetype.flee_threshold = 0.2
+		pirate_archetype.attack_weak_targets = 0.8
+	
+	# Configure BEFORE adding to scene
 	npc_ship.configure_with_archetype(pirate_archetype, Government.Faction.PIRATES)
 	
 	# Position near player
@@ -204,6 +207,25 @@ func spawn_hostile_npc_near_player():
 	current_npcs.append(npc_ship)
 	
 	print("Spawned hostile pirate near player at ", npc_ship.global_position)
+	
+func create_default_archetype() -> NPCArchetype:
+	"""Create a default archetype if none are loaded"""
+	var default = NPCArchetype.new()
+	default.archetype_name = "Default"
+	default.aggression = 0.3
+	default.bravery = 0.5
+	default.greed = 0.5
+	default.loyalty = 0.5
+	default.flee_threshold = 0.3
+	default.attack_weak_targets = 0.2
+	default.behavior_weights = {
+		"trade": 0.5,
+		"flee": 0.7,
+		"attack": 0.3,
+		"patrol": 0.3,
+		"escort": 0.2
+	}
+	return default
 
 func spawn_initial_npcs():
 	"""Spawn NPCs already in the system when player arrives"""

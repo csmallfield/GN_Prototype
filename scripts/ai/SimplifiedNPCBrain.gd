@@ -31,10 +31,6 @@ var min_goal_duration: float = 2.0  # Minimum seconds before changing goals
 func _ready():
 	owner_ship = get_parent()
 	
-	# Make sure we have an archetype
-	if not archetype:
-		push_warning("NPCBrain has no archetype! Creating default...")
-		archetype = create_default_archetype()
 
 func create_default_archetype() -> NPCArchetype:
 	var default = NPCArchetype.new()
@@ -50,6 +46,10 @@ func create_default_archetype() -> NPCArchetype:
 func think(delta: float):
 	if not owner_ship:
 		return
+	
+	# Create default archetype if none exists
+	if not archetype:
+		archetype = create_default_archetype()
 	
 	# Update timers
 	goal_lock_timer -= delta
@@ -78,30 +78,69 @@ func evaluate_situation():
 	
 	var old_goal = current_goal
 	
-	# Priority-based goal selection
+	# Priority-based goal selection with more variety
 	if threats.size() > 0 and should_flee():
 		current_goal = "flee"
 		flee_target = threats[0]
 		target = null
+		destination = null
 		lock_goal()
+		print("NPC fleeing from threat!")
 	elif opportunities.size() > 0 and should_attack():
 		current_goal = "attack"
 		target = opportunities[0]
 		flee_target = null
+		destination = null
 		lock_goal()
-	elif destinations.size() > 0 and randf() < 0.7:  # 70% chance to visit planets
+		print("NPC attacking target!")
+	elif destinations.size() > 0 and randf() < 0.6:  # 60% chance to visit planets
 		current_goal = "travel"
 		destination = destinations[0]
 		target = null
 		flee_target = null
-		lock_goal(3.0)  # Longer lock for travel
+		lock_goal(5.0)  # Longer lock for travel
+		print("NPC traveling to: ", destination.name if destination.has_method("get_name") else "destination")
 	else:
 		current_goal = "wander"
 		target = null
 		flee_target = null
+		destination = null
+		# Don't lock wander, allow quick transitions
 	
 	if old_goal != current_goal:
-		print("NPC goal changed: ", old_goal, " -> ", current_goal)
+		print("NPC [", owner_ship.name, "] goal changed: ", old_goal, " -> ", current_goal)
+	# Add to evaluate_situation after the travel check:
+	elif randf() < 0.1 and goal_lock_timer <= 0:  # 10% chance to leave system
+		current_goal = "exit_system"
+		destination = null
+		target = null
+		flee_target = null
+		lock_goal(10.0)  # Commit to leaving
+		print("NPC deciding to leave system")
+
+# Add this new function:
+func get_exit_command() -> Dictionary:
+	"""Command to leave the system via hyperspace"""
+	# Pick a random direction away from center
+	var exit_direction = Vector2.from_angle(randf() * TAU)
+	var desired_heading = exit_direction.angle() + PI/2
+	
+	# Check distance from center
+	var distance_from_center = owner_ship.global_position.length()
+	
+	if distance_from_center > 3000:  # Far enough to jump
+		# Trigger hyperspace exit in the ship
+		if owner_ship.has_method("start_hyperspace_exit"):
+			owner_ship.start_hyperspace_exit()
+		return {"thrust": 0.0, "turn": 0.0, "fire": false}
+	else:
+		# Head toward exit point
+		return {
+			"thrust": 1.0,
+			"turn": calculate_smooth_turn(desired_heading),
+			"fire": false
+		}
+
 
 func lock_goal(duration: float = -1):
 	"""Lock the current goal for a minimum duration"""
@@ -267,6 +306,8 @@ func get_movement_command() -> Dictionary:
 		"travel":
 			if destination and is_instance_valid(destination):
 				command = get_travel_command(destination)
+		"exit_system":
+			command = get_exit_command()
 		"wander":
 			command = get_wander_command()
 	
@@ -339,28 +380,34 @@ func get_travel_command(dest: Node2D) -> Dictionary:
 		"fire": false
 	}
 
+# Replace the get_wander_command function in SimplifiedNPCBrain.gd
+
 func get_wander_command() -> Dictionary:
-	# Simple wandering behavior
-	if not owner_ship.has_meta("wander_target"):
-		# Pick a random point
-		var angle = randf() * TAU
-		var distance = randf_range(500, 1500)
-		var wander_pos = owner_ship.global_position + Vector2.from_angle(angle) * distance
-		owner_ship.set_meta("wander_target", wander_pos)
+	# More interesting wandering behavior
+	if not owner_ship.has_meta("wander_timer"):
+		owner_ship.set_meta("wander_timer", 0.0)
+		owner_ship.set_meta("wander_thrust", randf_range(0.3, 0.7))
+		owner_ship.set_meta("wander_turn", randf_range(-0.3, 0.3))
 	
-	var wander_target = owner_ship.get_meta("wander_target")
-	var to_target = wander_target - owner_ship.global_position
+	var wander_timer = owner_ship.get_meta("wander_timer")
+	wander_timer += get_physics_process_delta_time()
 	
-	# Reached wander target?
-	if to_target.length() < 200:
-		owner_ship.remove_meta("wander_target")
-		return {"thrust": 0.3, "turn": 0.0, "fire": false}
-	
-	var desired_heading = to_target.normalized().angle() + PI/2
+	# Change wander pattern every 3-6 seconds
+	if wander_timer > randf_range(3.0, 6.0):
+		owner_ship.set_meta("wander_timer", 0.0)
+		owner_ship.set_meta("wander_thrust", randf_range(0.2, 0.8))
+		owner_ship.set_meta("wander_turn", randf_range(-0.5, 0.5))
+		
+		# Sometimes stop and turn
+		if randf() < 0.3:
+			owner_ship.set_meta("wander_thrust", 0.0)
+			owner_ship.set_meta("wander_turn", randf_range(-1.0, 1.0))
+	else:
+		owner_ship.set_meta("wander_timer", wander_timer)
 	
 	return {
-		"thrust": 0.5,
-		"turn": calculate_smooth_turn(desired_heading),
+		"thrust": owner_ship.get_meta("wander_thrust"),
+		"turn": owner_ship.get_meta("wander_turn"),
 		"fire": false
 	}
 

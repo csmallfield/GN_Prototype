@@ -7,6 +7,7 @@
 radius = 16.0312
 
 [node name="NPCShip" type="RigidBody2D"]
+collision_mask = 16
 gravity_scale = 0.0
 linear_damp = 0.1
 angular_damp = 1.0
