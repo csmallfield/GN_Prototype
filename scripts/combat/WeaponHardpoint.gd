@@ -391,14 +391,15 @@ func play_fire_effects():
 	if weapon_data and weapon_data.fire_sound and audio_player:
 		audio_player.stream = weapon_data.fire_sound
 		audio_player.play()
+	
 
 # Debug visualization
-#func _draw():
+func _draw():
 	if not OS.is_debug_build() or not weapon_data:
 		return
 	
 	# Draw weapon range
-	draw_arc(Vector2.ZERO, weapon_data.range, 0, TAU, 32, Color.GREEN, 2.0)
+	#draw_arc(Vector2.ZERO, weapon_data.range, 0, TAU, 32, Color.GREEN, 2.0)
 	
 	# Draw fire point
 	draw_circle(fire_point_offset, 3.0, Color.RED)

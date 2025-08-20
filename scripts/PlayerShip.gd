@@ -769,3 +769,11 @@ func create_flash_overlay():
 	canvas_layer.add_child(flash_overlay)
 	
 	print("Flash overlay created in CanvasLayer")
+	
+func take_damage(amount: float, damage_type = 0, attacker: Node2D = null):
+	"""Handle damage to player ship"""
+	var combat_system = get_node_or_null("ShipCombatSystem")
+	if combat_system:
+		combat_system.take_damage(amount, damage_type, attacker)
+	else:
+		print("Player ship took ", amount, " damage but no combat system found!")

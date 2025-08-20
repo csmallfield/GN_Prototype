@@ -94,32 +94,59 @@ func _ready():
 	UniverseManager.system_changed.connect(_on_system_changed)
 	
 	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
+	# Add combat system
 	var combat_system = ShipCombatSystem.new()
 	combat_system.name = "ShipCombatSystem"
 	add_child(combat_system)
 	
-	# Enable auto-targeting for NPCs
-	combat_system.auto_target = true
-	combat_system.target_scan_range = 800.0
+	# Add a weapon hardpoint if none exists
+	setup_npc_weapons()
 	
-	print("NPC combat system initialized for: ", name)
+	print("NPC combat system initialized")
 
+func setup_npc_weapons():
+	"""Setup basic weapons for NPC"""
+	# Check if we already have a weapon hardpoint
+	if get_node_or_null("WeaponHardpoint"):
+		return
+	
+	# Create weapon hardpoint
+	var hardpoint = WeaponHardpoint.new()
+	hardpoint.name = "WeaponHardpoint"
+	hardpoint.position = Vector2(0, -20)
+	
+	# Create muzzle flash
+	var muzzle_flash = Node2D.new()
+	muzzle_flash.name = "MuzzleFlash"
+	hardpoint.add_child(muzzle_flash)
+	
+	# Add to ship
+	add_child(hardpoint)
+	
+	# Mount a weapon
+	hardpoint.mount_weapon(Weapon.create_basic_laser())
+	
+	print("NPC weapons setup complete")
 
-
-
-func on_damage_taken(amount: float, damage_type: Weapon.DamageType, attacker: Node2D):
+func on_damage_taken(amount: float, damage_type, attacker: Node2D):
 	"""Called when ship takes damage - AI can react"""
-	print("NPC ", name, " took ", amount, " damage from ", attacker.name if attacker else "unknown")
+	print("🎯 NPC ", name, " took ", amount, " damage from ", attacker.name if attacker else "unknown")
 	
-	# Simple reaction: if we don't have a target and someone shot us, target them
+	# Get combat system
 	var combat_system = get_node_or_null("ShipCombatSystem")
-	if combat_system and attacker:
+	if not combat_system:
+		print("❌ No combat system found for NPC reaction")
+		return
+	
+	# Target the attacker
+	if attacker:
 		combat_system.set_target(attacker)
-		print("NPC ", name, " now targeting ", attacker.name)
+		print("🎯 NPC ", name, " now targeting ", attacker.name)
 		
-		# Start firing back immediately
-		if randf() < 0.8:  # 80% chance to fire back
-			combat_system.fire_primary_weapons()
+		# Start firing back
+		await get_tree().create_timer(0.5).timeout  # Small delay for realism
+		combat_system.fire_primary_weapons()
+		print("🔫 NPC ", name, " firing back!")
 
 func _on_hull_damaged(current_hull: float, max_hull: float):
 	"""React to hull damage"""
@@ -857,3 +884,14 @@ func _draw():
 	var font = ThemeDB.fallback_font
 	var state_text = AIState.keys()[current_ai_state]
 	draw_string(font, Vector2(0, -40), state_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.WHITE)
+	
+func take_damage(amount: float, damage_type = 0, attacker: Node2D = null):
+	"""Handle damage to NPC ship"""
+	var combat_system = get_node_or_null("ShipCombatSystem")
+	if combat_system:
+		combat_system.take_damage(amount, damage_type, attacker)
+	else:
+		print("NPC ship took ", amount, " damage but no combat system found!")
+	
+	# Call the AI reaction
+	on_damage_taken(amount, damage_type, attacker)
