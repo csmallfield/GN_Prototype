@@ -2,7 +2,8 @@
 
 [ext_resource type="Texture2D" uid="uid://dqj5mkucxqde2" path="res://sprites/profiles/character_test.png" id="1_415de"]
 [ext_resource type="Shader" uid="uid://c1r86qlu7ciip" path="res://shaders/face_deform_weightbased.gdshader" id="1_js6k0"]
-[ext_resource type="Script" uid="uid://bmyeejtdeet37" path="res://scripts/FaceControl.gd" id="3_ph5do"]
+[ext_resource type="Script" uid="uid://bmyeejtdeet37" path="res://scripts/experimental/FaceControl.gd" id="3_ph5do"]
+
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ph5do"]
 shader = ExtResource("1_js6k0")
