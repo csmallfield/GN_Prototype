@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" uid="uid://dd0glb4j2cxhj" path="res://scenes/experimental/PlanetGenerator.tscn" id="3_yc7ia"]
 [ext_resource type="Script" uid="uid://cph6l16xwvhy0" path="res://scripts/TrafficManager.gd" id="4_cijgp"]
 
-
 [node name="SystemScene" type="Node2D"]
 script = ExtResource("1_gy4ls")
 

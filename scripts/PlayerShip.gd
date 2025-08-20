@@ -62,6 +62,55 @@ func _ready():
 	
 	# Create flash overlay for hyperspace effect
 	create_flash_overlay()
+	
+	# Remove this line - we'll let the combat system handle weapons
+	# setup_test_weapon()
+	
+	# Add combat system
+	var combat_system = ShipCombatSystem.new()
+	combat_system.name = "ShipCombatSystem"
+	add_child(combat_system)
+	
+	# Connect combat signals for UI updates
+	combat_system.hull_damaged.connect(_on_hull_damaged)
+	combat_system.shields_damaged.connect(_on_shields_damaged)
+	combat_system.ship_destroyed.connect(_on_player_ship_destroyed)
+	
+	# FIX: Manually set ship owner for hardpoints
+	await get_tree().process_frame  # Wait for everything to initialize
+	
+	var hardpoint = get_node_or_null("WeaponHardpoint")
+	if hardpoint:
+		print("Setting ship owner manually...")
+		hardpoint.ship_owner = self  # Directly assign the ship
+		print("Ship owner set to: ", hardpoint.ship_owner.name)
+	
+	# Debug check
+	var combat_check = get_node_or_null("ShipCombatSystem")
+	if combat_check:
+		print("✅ Combat system created successfully")
+		print("Weapon hardpoints found: ", combat_check.weapon_hardpoints.size())
+	else:
+		print("❌ Combat system not found!")
+
+func setup_test_weapon():
+	var hardpoint = get_node_or_null("WeaponHardpoint")
+	if hardpoint:
+		var weapon = Weapon.create_basic_laser()
+		hardpoint.mount_weapon(weapon)
+		print("Test weapon mounted to player ship")
+		
+func _on_hull_damaged(current_hull: float, max_hull: float):
+	# Update UI health bars here
+	pass
+
+func _on_shields_damaged(current_shields: float, max_shields: float):
+	# Update UI shield bars here
+	pass
+
+func _on_player_ship_destroyed(attacker: Node2D):
+	# Handle player death (game over, respawn, etc.)
+	print("Player ship destroyed!")
 
 func _integrate_forces(state):
 	if hyperspace_state == HyperspaceState.NORMAL:
@@ -338,6 +387,33 @@ func _input(event):
 		# Debug: Test mission system
 		if OS.is_debug_build():
 			debug_test_mission_system()
+# In _input() function, add:
+	if event.is_action_pressed("ui_accept"):  # Space bar or A button
+		var combat_system = get_node_or_null("ShipCombatSystem")
+		if combat_system:
+			combat_system.fire_primary_weapons()
+#TEMP below this line
+	if event.is_action_pressed("ui_accept"):
+		print("🔫 DIRECT WEAPON TEST")
+		
+		# Direct hardpoint test
+		var hardpoint = get_node_or_null("WeaponHardpoint")
+		if hardpoint:
+			print("Hardpoint found, trying direct fire...")
+			
+			# Make sure it has a weapon
+			if not hardpoint.weapon_data:
+				hardpoint.mount_weapon(Weapon.create_basic_laser())
+				print("Mounted basic laser")
+			
+			# Try to fire
+			var fired = hardpoint.try_fire()
+			print("Direct fire result: ", fired)
+			print("Can fire now: ", hardpoint.can_fire_now())
+			print("Reload timer: ", hardpoint.reload_timer)
+		else:
+			print("❌ No hardpoint found!")
+#TEMP above this line
 
 func interact_with_target():
 	if current_target.has_method("interact"):

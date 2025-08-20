@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3 uid="uid://b38m22ltecqyc"]
+
+[ext_resource type="Script" uid="uid://cfn0kh7ngocl5" path="res://scripts/combat/Projectile.gd" id="1_rgbsv"]
+[ext_resource type="Texture2D" uid="uid://iirngt2r7pvm" path="res://icon.svg" id="2_1jo0v"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_rgbsv"]
+radius = 3.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1jo0v"]
+radius = 8.0
+
+[node name="Projectile" type="RigidBody2D"]
+collision_layer = 4
+collision_mask = 3
+gravity_scale = 0.0
+angular_damp = 10.0
+script = ExtResource("1_rgbsv")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0, 1, 1, 1)
+scale = Vector2(0.1, 0.1)
+texture = ExtResource("2_1jo0v")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_rgbsv")
+
+[node name="AreaDetector" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AreaDetector"]
+shape = SubResource("CircleShape2D_1jo0v")

@@ -94,6 +94,45 @@ func _ready():
 	UniverseManager.system_changed.connect(_on_system_changed)
 	
 	print("NPC Ship spawned with hue shift: ", ship_hue_shift, " visit duration: ", visit_duration)
+	var combat_system = ShipCombatSystem.new()
+	combat_system.name = "ShipCombatSystem"
+	add_child(combat_system)
+	
+	# Enable auto-targeting for NPCs
+	combat_system.auto_target = true
+	combat_system.target_scan_range = 800.0
+	
+	print("NPC combat system initialized for: ", name)
+
+
+
+
+func on_damage_taken(amount: float, damage_type: Weapon.DamageType, attacker: Node2D):
+	"""Called when ship takes damage - AI can react"""
+	print("NPC ", name, " took ", amount, " damage from ", attacker.name if attacker else "unknown")
+	
+	# Simple reaction: if we don't have a target and someone shot us, target them
+	var combat_system = get_node_or_null("ShipCombatSystem")
+	if combat_system and attacker:
+		combat_system.set_target(attacker)
+		print("NPC ", name, " now targeting ", attacker.name)
+		
+		# Start firing back immediately
+		if randf() < 0.8:  # 80% chance to fire back
+			combat_system.fire_primary_weapons()
+
+func _on_hull_damaged(current_hull: float, max_hull: float):
+	"""React to hull damage"""
+	var hull_percentage = current_hull / max_hull
+	
+	if hull_percentage < 0.25:
+		# Critically damaged - might want to flee
+		print("NPC ", name, " is critically damaged!")
+		# Add flee behavior here later
+
+func _on_target_acquired(target: Node2D):
+	"""React to acquiring a target"""
+	print("NPC ", name, " acquired target: ", target.name)
 
 func apply_hue_shift():
 	"""Apply random hue shift to make ships visually distinct"""

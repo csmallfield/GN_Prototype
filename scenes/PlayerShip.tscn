@@ -1,7 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://el1ywym68otq"]
+[gd_scene load_steps=7 format=3 uid="uid://el1ywym68otq"]
 
 [ext_resource type="Script" uid="uid://dpfhxkdfjm6rd" path="res://scripts/PlayerShip.gd" id="1_iig01"]
 [ext_resource type="Texture2D" uid="uid://c44abuabs8x3i" path="res://sprites/ships/player_ship.png" id="2_hkka0"]
+[ext_resource type="Script" uid="uid://b8mcil56a1men" path="res://scripts/combat/WeaponHardpoint.gd" id="3_a884r"]
+[ext_resource type="Texture2D" uid="uid://dnxqq5fcqqfp5" path="res://sprites/utility/muzzleFlash.png" id="4_qsm08"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hkka0"]
 radius = 19.0
@@ -43,3 +45,14 @@ shape = SubResource("CircleShape2D_a884r")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position_smoothing_enabled = true
+
+[node name="WeaponHardpoint" type="Node2D" parent="."]
+position = Vector2(0, -30)
+script = ExtResource("3_a884r")
+
+[node name="MuzzleFlash" type="Node2D" parent="WeaponHardpoint"]
+position = Vector2(0, 30)
+
+[node name="Sprite2D" type="Sprite2D" parent="WeaponHardpoint/MuzzleFlash"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("4_qsm08")
