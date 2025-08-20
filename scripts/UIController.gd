@@ -1,16 +1,18 @@
 # =============================================================================
-# UPDATED UI CONTROLLER - Now includes minimap
+# UPDATED UI CONTROLLER - Scene Loading Version
 # =============================================================================
 # UIController.gd
 extends Control
 
 @onready var hyperspace_map = $HyperspaceMap
 var minimap: Control
+var combat_ui: CombatUI
 
 func _ready():
 	add_to_group("ui")
 	setup_ui()
 	create_minimap()
+	create_combat_ui()
 
 func setup_ui():
 	# Hide map initially
@@ -40,6 +42,19 @@ func create_minimap():
 	add_child(minimap)
 	print("Minimap created and positioned")
 
+func create_combat_ui():
+	"""Load and create the combat UI from scene file"""
+	var combat_ui_scene = preload("res://scenes/ui/CombatUI.tscn")
+	if not combat_ui_scene:
+		push_error("Could not load CombatUI.tscn - make sure the scene file exists!")
+		return
+	
+	combat_ui = combat_ui_scene.instantiate()
+	combat_ui.name = "CombatUI"
+	
+	add_child(combat_ui)
+	print("Combat UI loaded from scene file")
+
 func show_hyperspace_menu():
 	"""Show the visual hyperspace map"""
 	if hyperspace_map and hyperspace_map.has_method("show_map"):
@@ -49,6 +64,18 @@ func _input(event):
 	if event.is_action_pressed("ui_cancel") and hyperspace_map and hyperspace_map.visible:
 		hyperspace_map.hide_map()
 		get_viewport().set_input_as_handled()
+	
+	# Debug keys for testing combat UI (only in debug builds)
+	if OS.is_debug_build() and combat_ui:
+		if event.is_action_pressed("ui_up"):  # Arrow up key
+			combat_ui.debug_damage_shields(15.0)
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("ui_down"):  # Arrow down key
+			combat_ui.debug_damage_hull(10.0)
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("ui_left"):  # Arrow left key
+			combat_ui.debug_restore_health()
+			get_viewport().set_input_as_handled()
 
 # Method to adjust minimap settings at runtime (for debugging/tuning)
 func set_minimap_zoom(zoom: float):
@@ -58,3 +85,7 @@ func set_minimap_zoom(zoom: float):
 func set_minimap_center_arrow_threshold(distance: float):
 	if minimap and minimap.has_method("set_center_arrow_threshold"):
 		minimap.set_center_arrow_threshold(distance)
+
+# Method to access combat UI for other systems
+func get_combat_ui() -> CombatUI:
+	return combat_ui

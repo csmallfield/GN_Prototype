@@ -92,6 +92,8 @@ func _ready():
 		print("Weapon hardpoints found: ", combat_check.weapon_hardpoints.size())
 	else:
 		print("❌ Combat system not found!")
+		
+
 
 func setup_test_weapon():
 	var hardpoint = get_node_or_null("WeaponHardpoint")

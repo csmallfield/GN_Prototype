@@ -72,7 +72,37 @@ func _process(delta):
 
 func load_ship_stats():
 	"""Load combat stats from ShipStats resource or use defaults"""
-	# Try multiple methods to find ship stats
+	# Try to get stats from ShipManager first (your existing system)
+	if is_player_ship and ShipManager:
+		var ship_data = ShipManager.get_current_ship_data()
+		var ship_stats_dict = ship_data.get("stats", {})
+		
+		if not ship_stats_dict.is_empty():
+			# Use cargo capacity as a rough guide for ship size/toughness
+			var cargo_capacity = ship_stats_dict.get("cargo_capacity", 40)
+			
+			# Scale combat stats based on ship characteristics
+			if cargo_capacity <= 50:  # Small ships (scout, interceptor)
+				max_hull = 80.0
+				max_shields = 40.0
+				shield_recharge_rate = 10.0
+			elif cargo_capacity <= 100:  # Medium ships (light freighter)
+				max_hull = 120.0
+				max_shields = 60.0
+				shield_recharge_rate = 8.0
+			else:  # Large ships (heavy freighter)
+				max_hull = 200.0
+				max_shields = 100.0
+				shield_recharge_rate = 6.0
+			
+			current_hull = max_hull
+			current_shields = max_shields
+			
+			print("✅ Loaded combat stats from ShipManager for ", ship.name)
+			print("   Hull: ", max_hull, " Shields: ", max_shields, " (based on cargo: ", cargo_capacity, ")")
+			return
+	
+	# Try traditional ShipStats resource
 	if ship.has_method("get_ship_stats"):
 		ship_stats = ship.get_ship_stats()
 	elif ship.has_meta("ship_stats"):
@@ -87,9 +117,9 @@ func load_ship_stats():
 		current_shields = max_shields
 		shield_recharge_rate = ship_stats.shield_recharge_rate
 		armor_rating = ship_stats.armor_rating
-		print("Loaded combat stats for ", ship.name, " - Hull: ", max_hull, " Shields: ", max_shields)
+		print("✅ Loaded combat stats from ShipStats for ", ship.name)
 	else:
-		# Use reasonable defaults based on ship type
+		# Use defaults
 		if is_player_ship:
 			max_hull = 100.0
 			max_shields = 50.0
@@ -101,7 +131,7 @@ func load_ship_stats():
 		
 		current_hull = max_hull
 		current_shields = max_shields
-		print("Using default combat stats for ", ship.name)
+		print("✅ Using default combat stats for ", ship.name)
 
 func find_weapon_hardpoints():
 	"""Find existing weapon hardpoints on the ship"""
