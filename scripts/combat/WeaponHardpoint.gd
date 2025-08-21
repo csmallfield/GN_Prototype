@@ -273,7 +273,7 @@ func fire_single_shot():
 		fire_projectile(fire_position, fire_direction)
 	else:
 		print("⚡ Weapon is instant hit type - calling fire_instant_hit")
-		fire_instant_hit(fire_position, fire_direction)
+		#fire_instant_hit(fire_position, fire_direction)
 	
 	print("🔥 Weapon fired, handling burst logic...")
 	
@@ -293,11 +293,29 @@ func fire_single_shot():
 	print("🔥 FIRE_SINGLE_SHOT COMPLETE")
 
 func fire_projectile(fire_position: Vector2, fire_direction: Vector2):
-	"""Fire a projectile weapon - with debug"""
+	"""Fire a projectile weapon - FIXED: Deferred creation to avoid physics conflicts"""
 	print("🚀 FIRING PROJECTILE DEBUG:")
 	print("Fire position: ", fire_position)
 	print("Fire direction: ", fire_direction)
 	print("Weapon speed: ", weapon_data.projectile_speed)
+	
+	# FIXED: Store the firing parameters and defer the actual creation
+	var firing_data = {
+		"weapon_data": weapon_data,
+		"fire_position": fire_position,
+		"fire_direction": fire_direction,
+		"ship_owner": ship_owner
+	}
+	
+	# Defer the projectile creation to avoid physics query conflicts
+	call_deferred("create_projectile_deferred", firing_data)
+
+func create_projectile_deferred(firing_data: Dictionary):
+	"""Create the projectile after physics frame is complete"""
+	var weapon_data = firing_data.weapon_data
+	var fire_position = firing_data.fire_position
+	var fire_direction = firing_data.fire_direction
+	var ship_owner = firing_data.ship_owner
 	
 	# Check if Projectile scene exists
 	var projectile_scene_path = "res://scenes/combat/Projectile.tscn"
@@ -335,18 +353,9 @@ func fire_projectile(fire_position: Vector2, fire_direction: Vector2):
 		projectile.setup_projectile(weapon_data, fire_position, fire_direction, ship_owner)
 		print("✅ Projectile setup complete")
 		print("Projectile position: ", projectile.global_position)
+		#print("Projectile velocity: ", projectile.linear_velocity)
 	else:
 		print("❌ ERROR: Projectile missing setup_projectile method")
-
-func fire_instant_hit(fire_position: Vector2, fire_direction: Vector2):
-	"""Fire an instant-hit weapon (beam/pulse)"""
-	var hit_target = find_target_in_direction(fire_position, fire_direction)
-	
-	if hit_target and hit_target.has_method("take_damage"):
-		hit_target.take_damage(weapon_data.damage, weapon_data.damage_type, ship_owner)
-		
-		# Create visual beam effect
-		create_beam_effect(fire_position, hit_target.global_position)
 
 func find_target_in_direction(start_pos: Vector2, direction: Vector2) -> Node2D:
 	"""Find the first target hit by an instant weapon"""

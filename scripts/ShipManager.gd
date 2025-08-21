@@ -17,10 +17,14 @@ func _ready():
 	print("ShipManager singleton initialized")
 	load_ships_data()
 	
-	# Set starting ship ID but don't apply stats yet (player ship not ready)
-	var starting_ship = ships_data.get("starting_ship", "scout_mk1")
-	current_ship_id = starting_ship
-	print("Starting ship ID set to: ", current_ship_id)
+	# FIXED: Only set starting ship if we don't already have one
+	# This preserves the player's ship when the scene reloads after death
+	if current_ship_id == "":
+		var starting_ship = ships_data.get("starting_ship", "scout_mk1")
+		current_ship_id = starting_ship
+		print("Setting initial starting ship ID to: ", current_ship_id)
+	else:
+		print("Preserving existing ship ID: ", current_ship_id, " (scene reload)")
 	
 	# Connect to UniverseManager to know when player ship is available
 	if UniverseManager:
