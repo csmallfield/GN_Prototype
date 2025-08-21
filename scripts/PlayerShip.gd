@@ -196,7 +196,7 @@ func update_shield_recharge(delta: float):
 # Add this to your _input() method in PlayerShip.gd:
 func handle_combat_input(event):
 	"""Handle combat input"""
-	if event.is_action_pressed("ui_accept"):  # Space bar or A button
+	if event.is_action_pressed("shoot"):  # Space bar or A button
 		fire_player_weapon()
 
 # Add this method to PlayerShip.gd:
@@ -505,12 +505,12 @@ func _input(event):
 		if OS.is_debug_build():
 			debug_test_mission_system()
 # In _input() function, add:
-	if event.is_action_pressed("ui_accept"):  # Space bar or A button
+	if event.is_action_pressed("shoot"):  # Space bar or A button
 		var combat_system = get_node_or_null("ShipCombatSystem")
 		if combat_system:
 			combat_system.fire_primary_weapons()
 #TEMP below this line
-	if event.is_action_pressed("ui_accept"):
+	if event.is_action_pressed("shoot"):
 		print("🔫 DIRECT WEAPON TEST")
 		
 		# Direct hardpoint test
