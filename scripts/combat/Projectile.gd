@@ -1,5 +1,5 @@
 # =============================================================================
-# FIXED PROJECTILE.GD - Added missing setup_projectile method
+# FIXED PROJECTILE.GD - Fixed physics query errors
 # =============================================================================
 
 extends Area2D
@@ -18,23 +18,30 @@ func _ready():
 	# Add to projectiles group for debugging
 	add_to_group("projectiles")
 	
-	# CRITICAL: Set collision layers properly
+	# FIXED: Use call_deferred to avoid physics query conflicts
+	call_deferred("setup_collision_detection")
+	
+	print("Projectile collision setup deferred")
+
+func setup_collision_detection():
+	"""Setup collision detection after physics frame is complete"""
+	# Set collision layers properly
 	collision_layer = 4    # Projectiles are on layer 3 (bit 2 = value 4)
 	collision_mask = 1     # Can hit Ships on layer 1 (bit 0 = value 1)
 	
-	# Enable collision detection
-	monitoring = true
-	monitorable = true
+	# Enable collision detection using set_deferred to avoid conflicts
+	set_deferred("monitoring", true)
+	set_deferred("monitorable", true)
 	
 	# Connect signals for BOTH body and area detection
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	
-	# IMPORTANT: Make sure we have a collision shape
+	# Check collision shape
 	if not get_node_or_null("CollisionShape2D"):
 		push_error("Projectile has no CollisionShape2D!")
 	
-	print("Projectile collision setup: layer=", collision_layer, " mask=", collision_mask)
+	print("Projectile collision setup complete: layer=", collision_layer, " mask=", collision_mask)
 
 # ADD THIS MISSING METHOD - This is what WeaponHardpoint is trying to call!
 func setup_projectile(weapon_data: Weapon, fire_position: Vector2, fire_direction: Vector2, ship_owner: Node2D):

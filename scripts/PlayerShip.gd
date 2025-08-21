@@ -13,7 +13,7 @@ var hyperspace_thrust_power: float = 1500.0
 var hyperspace_entry_speed: float = 800.0
 
 
-var hull: float = 150.0        # Player has more health
+var hull: float = 500.0        # Player has more health
 var max_hull: float = 150.0
 var shields: float = 75.0
 var max_shields: float = 75.0
