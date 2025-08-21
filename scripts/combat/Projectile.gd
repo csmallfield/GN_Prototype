@@ -1,5 +1,5 @@
 # =============================================================================
-# FIXED PROJECTILE.GD - Better movement and collision
+# FIXED PROJECTILE.GD - Added missing setup_projectile method
 # =============================================================================
 
 extends Area2D
@@ -35,7 +35,33 @@ func _ready():
 		push_error("Projectile has no CollisionShape2D!")
 	
 	print("Projectile collision setup: layer=", collision_layer, " mask=", collision_mask)
-	print("Projectile created with velocity: ", velocity, " speed: ", speed)
+
+# ADD THIS MISSING METHOD - This is what WeaponHardpoint is trying to call!
+func setup_projectile(weapon_data: Weapon, fire_position: Vector2, fire_direction: Vector2, ship_owner: Node2D):
+	"""Setup the projectile with weapon parameters - CRITICAL MISSING METHOD"""
+	# Set position
+	global_position = fire_position
+	
+	# Set velocity from weapon data and direction
+	speed = weapon_data.projectile_speed
+	velocity = fire_direction * speed
+	
+	# Set damage
+	damage = weapon_data.damage
+	
+	# Set shooter reference
+	shooter = ship_owner
+	
+	# Rotate sprite to match movement direction
+	if velocity.length() > 0:
+		rotation = velocity.angle()
+	
+	print("✅ Projectile setup complete:")
+	print("  Position: ", global_position)
+	print("  Velocity: ", velocity)
+	print("  Speed: ", speed)
+	print("  Damage: ", damage)
+	print("  Shooter: ", shooter.name if shooter else "unknown")
 
 func _physics_process(delta):
 	# Move the projectile

@@ -335,7 +335,6 @@ func fire_projectile(fire_position: Vector2, fire_direction: Vector2):
 		projectile.setup_projectile(weapon_data, fire_position, fire_direction, ship_owner)
 		print("✅ Projectile setup complete")
 		print("Projectile position: ", projectile.global_position)
-		print("Projectile velocity: ", projectile.linear_velocity)
 	else:
 		print("❌ ERROR: Projectile missing setup_projectile method")
 
