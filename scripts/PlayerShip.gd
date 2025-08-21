@@ -13,11 +13,12 @@ var hyperspace_thrust_power: float = 1500.0
 var hyperspace_entry_speed: float = 800.0
 
 
-#@export var thrust_power: float = 500.0
-#@export var rotation_speed: float = 3.0
-#@export var max_velocity: float = 400.0
-#@export var hyperspace_thrust_power: float = 1500.0
-#@export var hyperspace_entry_speed: float = 800.0
+var hull: float = 150.0        # Player has more health
+var max_hull: float = 150.0
+var shields: float = 75.0
+var max_shields: float = 75.0
+var shield_recharge_timer: float = 0.0
+var shield_recharge_delay: float = 3.0 
 
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles
@@ -79,6 +80,8 @@ func _ready():
 	# FIX: Manually set ship owner for hardpoints
 	await get_tree().process_frame  # Wait for everything to initialize
 	
+	setup_player_combat()
+	
 	var hardpoint = get_node_or_null("WeaponHardpoint")
 	if hardpoint:
 		print("Setting ship owner manually...")
@@ -93,6 +96,118 @@ func _ready():
 	else:
 		print("❌ Combat system not found!")
 		
+func _process(delta: float) -> void:
+	update_shield_recharge(delta)
+		
+func setup_player_combat():
+	"""Initialize player combat stats"""
+	hull = max_hull
+	shields = max_shields
+	print("Player combat initialized - Hull: ", hull, " Shields: ", shields)
+
+func take_damage(amount: float, attacker: Node2D = null):
+	"""Player takes damage"""
+	print("*** PLAYER TAKING DAMAGE *** Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
+	
+	var original_amount = amount
+	
+	# Shields absorb damage first
+	if shields > 0:
+		var shield_absorbed = min(amount, shields)
+		shields -= shield_absorbed
+		amount -= shield_absorbed
+		shield_recharge_timer = shield_recharge_delay
+		print("Player shields: ", shield_absorbed, " absorbed, ", shields, " remaining")
+	
+	# Remaining damage to hull
+	if amount > 0:
+		hull -= amount
+		print("Player hull: ", amount, " damage, ", hull, " remaining")
+		
+		# Screen shake effect
+		if camera:
+			add_screen_shake()
+		
+		# Check for player death
+		if hull <= 0:
+			player_destroyed()
+
+# Add this method to PlayerShip.gd:
+func player_destroyed():
+	"""Handle player death"""
+	print("*** PLAYER DESTROYED ***")
+	hull = 0
+	shields = 0
+	
+	# Simple game over for now
+	get_tree().paused = true
+	
+	# Create simple game over popup
+	var popup = AcceptDialog.new()
+	popup.title = "SHIP DESTROYED"
+	popup.dialog_text = "Your ship has been destroyed!\n\nPress OK to restart."
+	popup.process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	get_tree().current_scene.add_child(popup)
+	popup.popup_centered()
+	
+	popup.confirmed.connect(func(): 
+		get_tree().paused = false
+		get_tree().reload_current_scene()
+	)
+
+# Add this method to PlayerShip.gd:
+func add_screen_shake():
+	"""Simple screen shake when taking damage"""
+	if not camera:
+		return
+	
+	var shake_strength = 10.0
+	var shake_duration = 0.3
+	
+	var original_pos = camera.offset
+	var tween = create_tween()
+	
+	# Shake for duration
+	for i in range(5):
+		var shake_offset = Vector2(
+			randf_range(-shake_strength, shake_strength),
+			randf_range(-shake_strength, shake_strength)
+		)
+		tween.parallel().tween_property(camera, "offset", original_pos + shake_offset, shake_duration / 10)
+	
+	# Return to normal
+	tween.tween_property(camera, "offset", original_pos, 0.1)
+
+# Add this to your _process() method in PlayerShip.gd:
+func update_shield_recharge(delta: float):
+	"""Handle shield recharging"""
+	if shields >= max_shields:
+		return
+	
+	if shield_recharge_timer > 0:
+		shield_recharge_timer -= delta
+		return
+	
+	# Recharge shields
+	var recharge_rate = 10.0  # shields per second
+	shields = min(shields + recharge_rate * delta, max_shields)
+
+# Add this to your _input() method in PlayerShip.gd:
+func handle_combat_input(event):
+	"""Handle combat input"""
+	if event.is_action_pressed("ui_accept"):  # Space bar or A button
+		fire_player_weapon()
+
+# Add this method to PlayerShip.gd:
+func fire_player_weapon():
+	"""Fire the player's weapon"""
+	var weapon_hardpoint = get_node_or_null("WeaponHardpoint")
+	if weapon_hardpoint and weapon_hardpoint.has_method("try_fire"):
+		if weapon_hardpoint.try_fire():
+			print("Player fired weapon")
+		else:
+			print("Player weapon not ready")
 
 
 func setup_test_weapon():
@@ -415,6 +530,8 @@ func _input(event):
 			print("Reload timer: ", hardpoint.reload_timer)
 		else:
 			print("❌ No hardpoint found!")
+			
+	debug_combat_input(event)
 #TEMP above this line
 
 func interact_with_target():
@@ -772,10 +889,63 @@ func create_flash_overlay():
 	
 	print("Flash overlay created in CanvasLayer")
 	
-func take_damage(amount: float, damage_type = 0, attacker: Node2D = null):
-	"""Handle damage to player ship"""
-	var combat_system = get_node_or_null("ShipCombatSystem")
-	if combat_system:
-		combat_system.take_damage(amount, damage_type, attacker)
+# =============================================================================
+# ADD THIS DEBUG METHOD TO PlayerShip.gd 
+# =============================================================================
+
+# Add this to your _input() method in PlayerShip.gd
+func debug_combat_input(event):
+	"""Debug combat functionality"""
+	if not OS.is_debug_build():
+		return
+	
+	if event.is_action_pressed("debug_toggle"):  # F12 key
+		test_npc_damage()
+
+func test_npc_damage():
+	"""Debug: damage nearby NPCs to test their combat AI"""
+	print("🧪 Testing NPC damage and combat AI...")
+	
+	var nearby_npcs = get_tree().get_nodes_in_group("npc_ships")
+	var damaged_count = 0
+	
+	for npc in nearby_npcs:
+		if not is_instance_valid(npc):
+			continue
+		
+		var distance = global_position.distance_to(npc.global_position)
+		if distance < 1000:  # Damage NPCs within 1000 units
+			print("Damaging NPC: ", npc.name, " at distance: ", distance)
+			npc.take_damage(25.0, self)  # Damage NPC with player as attacker
+			damaged_count += 1
+	
+	if damaged_count == 0:
+		print("No NPCs found within 1000 units")
+		
+		# Spawn a test NPC if none exist
+		spawn_test_npc()
 	else:
-		print("Player ship took ", amount, " damage but no combat system found!")
+		print("Damaged ", damaged_count, " NPCs - they should now attack the player")
+
+func spawn_test_npc():
+	"""Spawn a test NPC near the player for combat testing"""
+	var npc_scene = load("res://scenes/NPCShip.tscn")
+	if not npc_scene:
+		print("❌ Could not load NPCShip scene")
+		return
+	
+	var npc = npc_scene.instantiate()
+	if not npc:
+		print("❌ Could not instantiate NPC")
+		return
+	
+	# Position near player
+	var spawn_offset = Vector2(300, 0).rotated(randf() * TAU)
+	npc.global_position = global_position + spawn_offset
+	npc.linear_velocity = Vector2.ZERO
+	
+	# Add to scene
+	get_tree().current_scene.add_child(npc)
+	
+	print("✅ Spawned test NPC at: ", npc.global_position)
+	print("Press F12 again to damage it and test combat AI")

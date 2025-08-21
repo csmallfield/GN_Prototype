@@ -1,5 +1,5 @@
 # =============================================================================
-# NPC SHIP - Updated for Phase 1 Simple AI
+# NPC SHIP - Updated for Phase 1 Simple Combat
 # =============================================================================
 extends RigidBody2D
 class_name NPCShip
@@ -12,35 +12,29 @@ class_name NPCShip
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles
 
-# Combat stats
+# Combat stats - keep it simple for Phase 1
 var hull: float = 100.0
 var max_hull: float = 100.0
 var shields: float = 50.0
 var max_shields: float = 50.0
-var weapon: Weapon = null
 
-# AI 
-var simple_ai: Node
+# AI reference
+var combat_ai: Phase1CombatAI
 
-# Visual variety
-var ship_hue_shift: float = 0.0
+# Weapon reference
+var weapon_hardpoint: WeaponHardpoint
 
 func _ready():
-	# Add to NPC group for easy finding
 	add_to_group("npc_ships")
-	
-	# Debug: Print what we are
 	print("NPCShip _ready() called for: ", name)
-	print("  Node type: ", get_class())
-	print("  Parent: ", get_parent().name if get_parent() else "NULL")
 	
-	# Set collision layers for combat
-	collision_layer = 1    # Ships are on layer 1
-	collision_mask = 5     # Ships + Projectiles: 1 + 4 = 5
+	# Set collision for combat
+	collision_layer = 1    # Ships layer
+	collision_mask = 5     # Ships + Projectiles
 	
-	# Set random hue shift for visual variety
-	ship_hue_shift = randf() * 360.0
-	apply_hue_shift()
+	# Visual variety
+	var hue_shift = randf() * 360.0
+	apply_hue_shift(hue_shift)
 	
 	# Set up combat stats
 	max_hull = 100.0
@@ -48,114 +42,123 @@ func _ready():
 	max_shields = 30.0
 	shields = max_shields
 	
-	# Add simple AI (WeaponHardpoint should already exist in the scene)
-	setup_simple_ai()
+	# Get weapon hardpoint
+	weapon_hardpoint = get_node_or_null("WeaponHardpoint")
+	if weapon_hardpoint:
+		# Ensure it has a weapon
+		if not weapon_hardpoint.weapon_data:
+			weapon_hardpoint.mount_weapon(Weapon.create_basic_laser())
+		print("✅ NPC weapon hardpoint ready for: ", name)
+	else:
+		print("⚠️ WARNING: No weapon hardpoint found on ", name)
 	
-	if not weapon:
-		setup_weapon()
+	# IMPORTANT: Remove any old AI setup and add the new one
+	# Remove this if it exists:
+	# setup_simple_ai()  # REMOVE THIS LINE
+	
+	# Add the new Phase1CombatAI instead:
+	var combat_ai = Phase1CombatAI.new()
+	combat_ai.name = "Phase1CombatAI"
+	add_child(combat_ai)
+	print("✅ Phase1CombatAI added to: ", name)
 	
 	print("NPCShip initialization complete: ", name)
 
-func setup_weapon():
-	var weapon_scene = preload("res://scenes/combat/LaserCannon.tscn")
-	if weapon_scene:
-		weapon = weapon_scene.instantiate()
-		add_child(weapon)
-		
-func setup_simple_ai():
-	"""Add the simple AI brain"""
-	# Create a basic Node to hold the AI script
-	var ai_node = Node.new()
-	ai_node.name = "SimpleAI"
-	ai_node.set_script(preload("res://scripts/ai/SimpleNPCAI.gd"))
-	add_child(ai_node)
-	simple_ai = ai_node
-	print("Added simple AI to NPC: ", name)
-
 func _integrate_forces(state):
-	"""Handle physics integration with AI input"""
+	"""Handle physics with AI input"""
 	
-	# Get AI input (set by the AI in move_in_direction)
+	# Get AI input
 	var ai_turn = get_meta("ai_turn_input", 0.0)
 	var ai_thrust = get_meta("ai_thrust_input", 0.0)
+	var ai_fire = get_meta("ai_fire_input", false)
 	
 	# Apply rotation
-	if abs(ai_turn) > 0.05:  # Small dead zone
+	if abs(ai_turn) > 0.05:
 		state.angular_velocity = ai_turn * rotation_speed
 	else:
-		state.angular_velocity *= 0.9  # Damping when not turning
+		state.angular_velocity *= 0.9
 	
 	# Apply thrust
-	if ai_thrust > 0.1:  # Small dead zone
+	if ai_thrust > 0.1:
 		var thrust_vector = Vector2(0, -thrust_power * ai_thrust).rotated(rotation)
+		state.apply_central_force(thrust_vector)
+		engine_particles.emitting = true
+	elif ai_thrust < -0.1:
+		var thrust_vector = Vector2(0, thrust_power * abs(ai_thrust)).rotated(rotation)
 		state.apply_central_force(thrust_vector)
 		engine_particles.emitting = true
 	else:
 		engine_particles.emitting = false
+	
+	# Handle weapon firing
+	if ai_fire and weapon_hardpoint:
+		weapon_hardpoint.try_fire()
 	
 	# Limit velocity
 	if state.linear_velocity.length() > max_velocity:
 		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
 
 func take_damage(amount: float, attacker: Node2D = null):
-	print("NPC taking damage: ", amount, " from: ", attacker.name if attacker else "unknown")
+	"""Take damage and notify AI"""
+	print("*** NPC TAKING DAMAGE *** Ship: ", name, " Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
 	
-	# Shields first
+	# Apply damage to shields first, then hull
 	var shield_damage = min(amount, shields)
 	shields -= shield_damage
 	amount -= shield_damage
 	
-	# Then hull
 	if amount > 0:
 		hull -= amount
 	
 	print("NPC status - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
 	
+	# CRITICAL: Notify AI that we were attacked
+	var combat_ai = get_node_or_null("Phase1CombatAI")
+	if combat_ai and attacker:
+		combat_ai.notify_attacked_by(attacker)
+		print("✅ Notified AI of attack")
+	else:
+		print("❌ Could not notify AI - combat_ai: ", combat_ai, " attacker: ", attacker)
+	
 	# Check if destroyed
 	if hull <= 0:
+		print("*** NPC DESTROYED ***")
 		destroy()
-	
-	# SIMPLE REACTIVE BEHAVIOR: Shoot back if shot
-	if attacker and weapon and weapon.can_fire():
-		shoot_back_at_attacker(attacker)
-
-func shoot_back_at_attacker(attacker: Node2D):
-	if not attacker or not weapon:
-		return
-	
-	var fire_direction = (attacker.global_position - global_position).normalized()
-	weapon.fire(fire_direction, Government.Faction.INDEPENDENT)
-	print("NPC shooting back at attacker!")
 
 func destroy():
-	print("NPC destroyed!")
-	queue_free()
+	"""Ship destroyed"""
+	print("NPC Ship destroyed: ", name)
+	# Simple explosion effect
+	var explosion = ColorRect.new()
+	explosion.size = Vector2(100, 100)
+	explosion.position = global_position - explosion.size / 2
+	explosion.color = Color.ORANGE
+	get_tree().current_scene.add_child(explosion)
+	
+	var tween = create_tween()
+	tween.parallel().tween_property(explosion, "scale", Vector2(3, 3), 0.5)
+	tween.parallel().tween_property(explosion, "modulate", Color.TRANSPARENT, 0.5)
+	tween.tween_callback(explosion.queue_free)
+	
+	cleanup_and_remove()
 
 func get_hull_percent() -> float:
-	"""Get hull as a percentage"""
 	if max_hull <= 0:
 		return 0
 	return hull / max_hull
 
-func apply_hue_shift():
-	"""Apply random hue shift for visual variety"""
+func apply_hue_shift(hue_shift: float):
 	if sprite and sprite.texture:
-		var hue_color = Color.from_hsv(ship_hue_shift / 360.0, 0.6, 1.0)
+		var hue_color = Color.from_hsv(hue_shift / 360.0, 0.6, 1.0)
 		sprite.modulate = hue_color
 
 func cleanup_and_remove():
-	"""Clean up and remove this NPC"""
 	print("NPC cleanup and remove: ", name)
-	
-	# Notify traffic manager
 	var traffic_manager = get_tree().get_first_node_in_group("traffic_manager")
 	if traffic_manager and traffic_manager.has_method("_on_npc_removed"):
 		traffic_manager._on_npc_removed(self)
-	
 	queue_free()
 
-# Configure method for traffic manager compatibility
+# Keep for compatibility
 func configure_with_archetype(archetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
-	"""Configure this NPC - simplified for Phase 1"""
-	print("NPC configured as simple Phase 1 ship, faction: ", Government.Faction.keys()[ship_faction])
-	# For Phase 1, we ignore archetypes and just use the simple AI
+	print("NPC configured for Phase 1 combat, faction: ", Government.Faction.keys()[ship_faction])
