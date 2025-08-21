@@ -126,20 +126,27 @@ func take_damage(amount: float, attacker: Node2D = null):
 		destroy()
 
 func destroy():
-	"""Ship destroyed"""
-	print("NPC Ship destroyed: ", name)
-	# Simple explosion effect
+	"""Ship destroyed - FIXED: Explosion cleanup"""
+	print("*** NPC DESTROYED ***")
+	
+	# Create explosion effect
 	var explosion = ColorRect.new()
 	explosion.size = Vector2(100, 100)
 	explosion.position = global_position - explosion.size / 2
 	explosion.color = Color.ORANGE
 	get_tree().current_scene.add_child(explosion)
 	
-	var tween = create_tween()
-	tween.parallel().tween_property(explosion, "scale", Vector2(3, 3), 0.5)
-	tween.parallel().tween_property(explosion, "modulate", Color.TRANSPARENT, 0.5)
-	tween.tween_callback(explosion.queue_free)
+	# FIXED: Use a simple timer instead of tween
+	var timer = Timer.new()
+	timer.wait_time = 0.5
+	timer.one_shot = true
+	timer.timeout.connect(func(): explosion.queue_free())
+	explosion.add_child(timer)
+	timer.start()
 	
+	print("Explosion created with 0.5s timer cleanup")
+	
+	# Clean up the ship
 	cleanup_and_remove()
 
 func get_hull_percent() -> float:
