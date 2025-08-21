@@ -17,6 +17,7 @@ var hull: float = 100.0
 var max_hull: float = 100.0
 var shields: float = 50.0
 var max_shields: float = 50.0
+var weapon: Weapon = null
 
 # AI 
 var simple_ai: Node
@@ -50,20 +51,17 @@ func _ready():
 	# Add simple AI (WeaponHardpoint should already exist in the scene)
 	setup_simple_ai()
 	
+	if not weapon:
+		setup_weapon()
+	
 	print("NPCShip initialization complete: ", name)
 
-#func setup_weapon():
-#	"""Add a basic weapon to the NPC"""
-	# Create a simple weapon node that can actually fire
-#	weapon = Node2D.new()
-#	weapon.name = "SimpleWeapon"
-#	add_child(weapon)
-	
-	# Add firing capability to the weapon
-#	weapon.set_script(preload("res://scripts/SimpleWeaponFirer.gd"))
-	
-#	print("Added simple weapon to NPC: ", name)
-
+func setup_weapon():
+	var weapon_scene = preload("res://scenes/combat/LaserCannon.tscn")
+	if weapon_scene:
+		weapon = weapon_scene.instantiate()
+		add_child(weapon)
+		
 func setup_simple_ai():
 	"""Add the simple AI brain"""
 	# Create a basic Node to hold the AI script
@@ -100,34 +98,38 @@ func _integrate_forces(state):
 		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
 
 func take_damage(amount: float, attacker: Node2D = null):
-	"""Take damage from weapons"""
-	print("*** NPC TAKING DAMAGE *** Ship: ", name, " Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
+	print("NPC taking damage: ", amount, " from: ", attacker.name if attacker else "unknown")
 	
-	# Apply damage to shields first, then hull
+	# Shields first
 	var shield_damage = min(amount, shields)
 	shields -= shield_damage
 	amount -= shield_damage
 	
-	# Remaining damage to hull
+	# Then hull
 	if amount > 0:
 		hull -= amount
 	
-	print("NPC status after damage - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
-	
-	# Notify AI that we were attacked
-	if simple_ai and attacker:
-		simple_ai.notify_attacked_by(attacker)
+	print("NPC status - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
 	
 	# Check if destroyed
 	if hull <= 0:
-		print("*** NPC DESTROYED ***")
 		destroy()
+	
+	# SIMPLE REACTIVE BEHAVIOR: Shoot back if shot
+	if attacker and weapon and weapon.can_fire():
+		shoot_back_at_attacker(attacker)
+
+func shoot_back_at_attacker(attacker: Node2D):
+	if not attacker or not weapon:
+		return
+	
+	var fire_direction = (attacker.global_position - global_position).normalized()
+	weapon.fire(fire_direction, Government.Faction.INDEPENDENT)
+	print("NPC shooting back at attacker!")
 
 func destroy():
-	"""Ship destroyed"""
-	print("NPC Ship destroyed: ", name)
-	# TODO: Add explosion effect
-	cleanup_and_remove()
+	print("NPC destroyed!")
+	queue_free()
 
 func get_hull_percent() -> float:
 	"""Get hull as a percentage"""
