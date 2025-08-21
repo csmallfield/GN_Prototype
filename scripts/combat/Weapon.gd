@@ -2,7 +2,7 @@
 # WEAPON RESOURCE - Defines weapon characteristics and behavior
 # =============================================================================
 # Weapon.gd
-extends Resource
+extends Node2D
 class_name Weapon
 
 enum WeaponType {
