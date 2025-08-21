@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://dnxqq5fcqqfp5" path="res://sprites/utility/muzzleFlash.png" id="4_qsm08"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hkka0"]
-radius = 19.0
+radius = 14.1421
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_a884r"]
 radius = 100.02

@@ -42,19 +42,19 @@ func setup_progress_bar_styles():
 	hull_fill.bg_color = Color.GREEN
 	hull_bar.add_theme_stylebox_override("fill", hull_fill)
 
-func _input(event):
-	"""Handle test input"""
-	if not OS.is_debug_build():
-		return
+#func _input(event):
+	#"""Handle test input"""
+	#if not OS.is_debug_build():
+		#return
 		
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_1:
-				debug_damage_shields(15.0)
-			KEY_2:
-				debug_damage_hull(10.0)
-			KEY_3:
-				debug_restore_health()
+	#if event is InputEventKey and event.pressed:
+		#match event.keycode:
+			#KEY_1:
+				#debug_damage_shields(15.0)
+			#KEY_2:
+				#debug_damage_hull(10.0)
+			#KEY_3:
+				#debug_restore_health()
 
 func update_shield_display():
 	"""Update the shield bar and label using test values"""
