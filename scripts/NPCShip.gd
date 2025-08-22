@@ -5,9 +5,9 @@ extends RigidBody2D
 #class_name NPCShip
 
 # Ship stats
-@export var thrust_power: float = 500.0
-@export var rotation_speed: float = 3.0
-@export var max_velocity: float = 400.0
+@export var thrust_power: float = 100.0
+@export var rotation_speed: float = 1.0
+@export var max_velocity: float = 100.0
 
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles

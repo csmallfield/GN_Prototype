@@ -116,8 +116,16 @@ func hit_target(target):
 	# Check if it's a ship with health
 	if actual_ship.has_method("take_damage"):
 		print("*** PROJECTILE HIT CONFIRMED *** Target: ", actual_ship.name, " Damage: ", damage)
-		# FIXED: Pass both damage amount AND the shooter as arguments
-		actual_ship.take_damage(damage, shooter)
+		
+		# CRITICAL FIX: Check if shooter is still valid before passing it
+		var valid_shooter = null
+		if shooter and is_instance_valid(shooter):
+			valid_shooter = shooter
+		else:
+			print("Warning: Shooter has been destroyed, passing null attacker")
+		
+		# Pass damage and valid shooter (or null if shooter was destroyed)
+		actual_ship.take_damage(damage, valid_shooter)
 		
 		# Create a small visual effect at hit point
 		create_hit_effect(actual_ship.global_position)
