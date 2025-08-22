@@ -2,7 +2,7 @@
 # NPC SHIP - Updated for Phase 1 Simple Combat
 # =============================================================================
 extends RigidBody2D
-class_name NPCShip
+#class_name NPCShip
 
 # Ship stats
 @export var thrust_power: float = 500.0
