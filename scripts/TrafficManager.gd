@@ -1,5 +1,5 @@
 # =============================================================================
-# TRAFFIC MANAGER - Simplified for Phase 1 Simple AI
+# ENHANCED TRAFFIC MANAGER - Phase 2 with Archetype Assignment
 # =============================================================================
 extends Node2D
 class_name TrafficManager
@@ -7,15 +7,22 @@ class_name TrafficManager
 @export var spawn_distance: float = 4000.0
 @export var debug_mode: bool = false
 
-var current_npcs: Array = []  # Removed NPCShip type hint
+var current_npcs: Array = []
 var spawn_timer: float = 0.0
 var system_traffic_config: Dictionary = {}
 var active: bool = false
 
+# Enhanced for Phase 2 - Archetype distribution
+var archetype_weights = {
+	"trader": 0.5,    # 50% traders
+	"military": 0.3,  # 30% military  
+	"pirate": 0.2     # 20% pirates
+}
+
 # Default traffic configuration
 var default_config = {
 	"spawn_frequency": 15.0,
-	"max_npcs": 3,
+	"max_npcs": 5,  # Increased for better variety
 	"spawn_frequency_variance": 5.0,
 	"npc_config": {
 		"thrust_power": 500.0,
@@ -65,7 +72,7 @@ func get_active_npc_count() -> int:
 	return current_npcs.size()
 
 func spawn_npc():
-	"""Spawn a new NPC ship"""
+	"""Spawn a new NPC ship with assigned archetype"""
 	var npc_ship = create_npc_ship()
 	if not npc_ship:
 		return
@@ -82,10 +89,13 @@ func spawn_npc():
 	npc_ship.global_position = spawn_pos
 	npc_ship.linear_velocity = Vector2.ZERO
 	
+	# PHASE 2: Assign archetype and configure AI
+	assign_archetype_to_npc(npc_ship)
+	
 	if debug_mode:
 		print("TrafficManager: Spawned NPC at ", spawn_pos)
 
-func create_npc_ship():  # Removed return type hint
+func create_npc_ship():
 	"""Create a new NPC ship"""
 	var npc_ship_scene = load("res://scenes/NPCShip.tscn")
 	if not npc_ship_scene:
@@ -94,37 +104,103 @@ func create_npc_ship():  # Removed return type hint
 	
 	var npc_ship = npc_ship_scene.instantiate()
 	
-	# Simple configuration - no complex archetypes for Phase 1
-	print("Created simple NPC ship")
+	print("Created NPC ship for Phase 2")
 	
 	return npc_ship
 
-func spawn_hostile_npc_near_player():
-	"""Debug method to spawn a hostile NPC near the player"""
-	var player = UniverseManager.player_ship
-	if not player:
-		print("No player ship found")
+func assign_archetype_to_npc(npc_ship):
+	"""Assign a specific archetype to the NPC based on system and weights"""
+	# Wait for NPC to be fully ready
+	await get_tree().process_frame
+	
+	var ai_component = npc_ship.get_node_or_null("Phase1CombatAI")
+	if not ai_component:
+		print("⚠️ NPC has no AI component")
 		return
 	
-	var npc_ship_scene = load("res://scenes/NPCShip.tscn")
-	if not npc_ship_scene:
+	# Determine archetype based on weights and system type
+	var chosen_archetype = choose_archetype_for_system()
+	
+	# Load the AIArchetype class
+	const AIArchetypeClass = preload("res://scripts/ai/AIArchetype.gd")
+	
+	# Assign the archetype
+	var archetype
+	match chosen_archetype:
+		"trader":
+			archetype = AIArchetypeClass.create_trader()
+		"pirate":
+			archetype = AIArchetypeClass.create_pirate()
+		"military":
+			archetype = AIArchetypeClass.create_military()
+		_:
+			archetype = AIArchetypeClass.create_trader()
+	
+	# Apply to AI
+	ai_component.archetype = archetype
+	ai_component.setup_behavior_tree()  # Recreate behavior tree with new archetype
+	
+	# Visual distinction (optional)
+	apply_visual_archetype_hints(npc_ship, chosen_archetype)
+	
+	print("✅ Assigned ", chosen_archetype, " archetype to ", npc_ship.name)
+
+func choose_archetype_for_system() -> String:
+	"""Choose archetype based on system characteristics and weights"""
+	var current_system = UniverseManager.get_current_system()
+	var system_name = current_system.get("name", "")
+	
+	# Modify weights based on system type
+	var modified_weights = archetype_weights.duplicate()
+	
+	# Military systems have more military ships
+	if "military" in system_name.to_lower() or "base" in system_name.to_lower():
+		modified_weights.military *= 2.0
+		modified_weights.pirate *= 0.3
+	
+	# Pirate systems have more pirates
+	elif "antares" in system_name.to_lower() or "freeport" in system_name.to_lower():
+		modified_weights.pirate *= 3.0
+		modified_weights.military *= 0.2
+	
+	# Trading systems have more traders
+	elif "trade" in system_name.to_lower() or "commercial" in system_name.to_lower():
+		modified_weights.trader *= 1.5
+	
+	# Choose based on weighted random
+	return weighted_random_choice(modified_weights)
+
+func weighted_random_choice(weights: Dictionary) -> String:
+	"""Choose a random key based on weights"""
+	var total_weight = 0.0
+	for weight in weights.values():
+		total_weight += weight
+	
+	var random_value = randf() * total_weight
+	var current_weight = 0.0
+	
+	for key in weights:
+		current_weight += weights[key]
+		if random_value <= current_weight:
+			return key
+	
+	# Fallback
+	return weights.keys()[0]
+
+func apply_visual_archetype_hints(npc_ship, archetype: String):
+	"""Apply subtle visual hints to distinguish archetypes"""
+	var sprite = npc_ship.get_node_or_null("Sprite2D")
+	if not sprite:
 		return
-		
-	var npc_ship = npc_ship_scene.instantiate()
 	
-	# Position near player
-	var spawn_offset = Vector2(randf_range(-500, 500), randf_range(-500, 500))
-	if spawn_offset.length() < 200:
-		spawn_offset = spawn_offset.normalized() * 300
-	
-	npc_ship.global_position = player.global_position + spawn_offset
-	npc_ship.linear_velocity = Vector2.ZERO
-	
-	# Add to scene
-	get_parent().add_child(npc_ship)
-	current_npcs.append(npc_ship)
-	
-	print("Spawned hostile NPC near player at ", npc_ship.global_position)
+	# Subtle color modifications to help distinguish ship types
+	match archetype:
+		"trader":
+			sprite.modulate = Color(0.8, 1.0, 0.8)  # Slight green tint
+		"military":
+			sprite.modulate = Color(0.8, 0.8, 1.0)  # Slight blue tint
+		"pirate":
+			sprite.modulate = Color(1.0, 0.8, 0.8)  # Slight red tint
 
 func spawn_initial_npcs():
 	"""Spawn NPCs already in the system when player arrives"""
@@ -165,6 +241,9 @@ func spawn_existing_npc():
 	var velocity_angle = randf() * TAU
 	var velocity_speed = randf_range(50, 150)
 	npc_ship.linear_velocity = Vector2.from_angle(velocity_angle) * velocity_speed
+	
+	# PHASE 2: Assign archetype
+	assign_archetype_to_npc(npc_ship)
 	
 	if debug_mode:
 		print("TrafficManager: Spawned existing NPC")
@@ -235,7 +314,7 @@ func cleanup_all_npcs():
 			npc.call_deferred("queue_free")
 	current_npcs.clear()
 
-func _on_npc_removed(npc):  # Removed type hint
+func _on_npc_removed(npc):
 	"""Called by NPCs when they remove themselves"""
 	current_npcs.erase(npc)
 	if debug_mode:
@@ -260,7 +339,7 @@ func _draw():
 	var cleanup_distance = spawn_distance * 1.5
 	draw_arc(system_center, cleanup_distance, 0, TAU, 64, Color.RED, 2.0)
 	
-	# Draw NPC info
+	# Draw NPC info with archetype
 	var font = ThemeDB.fallback_font
 	for i in range(current_npcs.size()):
 		var npc = current_npcs[i]
@@ -270,13 +349,16 @@ func _draw():
 		var local_pos = to_local(npc.global_position)
 		draw_circle(local_pos, 8.0, Color.YELLOW)
 		
-		# Simple state info
-		var npc_info = "NPC " + str(i)
-		if npc.has_method("get_current_state_name"):
-			npc_info += "\n" + npc.get_current_state_name()
+		# Get archetype info
+		var ai_component = npc.get_node_or_null("Phase1CombatAI")
+		var archetype_name = "Unknown"
+		if ai_component and ai_component.archetype:
+			archetype_name = ai_component.archetype.archetype_name.get_slice(" ", 0)  # First word
 		
+		var npc_info = "NPC " + str(i) + "\n" + archetype_name
 		draw_string(font, local_pos + Vector2(10, 0), npc_info, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 	
-	# Draw spawn timer info
+	# Draw spawn timer and archetype distribution
 	var timer_info = "Spawn in: " + str(round(spawn_timer * 10) / 10.0) + "s\nNPCs: " + str(current_npcs.size()) + "/" + str(system_traffic_config.get("max_npcs", 0))
+	timer_info += "\nArchetypes: T:" + str(archetype_weights.trader) + " M:" + str(archetype_weights.military) + " P:" + str(archetype_weights.pirate)
 	draw_string(font, Vector2(-200, -200), timer_info, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.CYAN)
