@@ -1,9 +1,182 @@
 [gd_scene load_steps=6 format=3 uid="uid://d20pwqoxogsvt"]
 
-[ext_resource type="Script" uid="uid://blkhs8b248n6l" path="res://scripts/NPCShip.gd" id="1_npc"]
 [ext_resource type="Texture2D" uid="uid://c44abuabs8x3i" path="res://sprites/ships/player_ship.png" id="2_sprite"]
 [ext_resource type="Script" uid="uid://b8mcil56a1men" path="res://scripts/combat/WeaponHardpoint.gd" id="3_lfvee"]
 [ext_resource type="Texture2D" uid="uid://dnxqq5fcqqfp5" path="res://sprites/utility/muzzleFlash.png" id="4_ny3j2"]
+
+[sub_resource type="GDScript" id="GDScript_sg80l"]
+script/source = "# =============================================================================
+# NPC SHIP - Updated for Phase 1 Simple Combat
+# =============================================================================
+extends RigidBody2D
+class_name NPCShip
+
+# Ship stats
+@export var thrust_power: float = 500.0
+@export var rotation_speed: float = 3.0
+@export var max_velocity: float = 400.0
+
+@onready var sprite = $Sprite2D
+@onready var engine_particles = $EngineParticles
+
+# Combat stats - keep it simple for Phase 1
+var hull: float = 100.0
+var max_hull: float = 100.0
+var shields: float = 50.0
+var max_shields: float = 50.0
+
+# AI reference
+var combat_ai: Phase1CombatAI
+
+# Weapon reference
+var weapon_hardpoint: WeaponHardpoint
+
+func _ready():
+	add_to_group(\"npc_ships\")
+	print(\"NPCShip _ready() called for: \", name)
+	
+	# Set collision for combat
+	collision_layer = 1    # Ships layer
+	collision_mask = 5     # Ships + Projectiles
+	
+	# Visual variety
+	var hue_shift = randf() * 360.0
+	apply_hue_shift(hue_shift)
+	
+	# Set up combat stats
+	max_hull = 100.0
+	hull = max_hull
+	max_shields = 30.0
+	shields = max_shields
+	
+	# Get weapon hardpoint
+	weapon_hardpoint = get_node_or_null(\"WeaponHardpoint\")
+	if weapon_hardpoint:
+		# Ensure it has a weapon
+		if not weapon_hardpoint.weapon_data:
+			weapon_hardpoint.mount_weapon(Weapon.create_basic_laser())
+		print(\"✅ NPC weapon hardpoint ready for: \", name)
+	else:
+		print(\"⚠️ WARNING: No weapon hardpoint found on \", name)
+	
+	# IMPORTANT: Remove any old AI setup and add the new one
+	# Remove this if it exists:
+	# setup_simple_ai()  # REMOVE THIS LINE
+	
+	# Add the new Phase1CombatAI instead:
+	var combat_ai = Phase1CombatAI.new()
+	combat_ai.name = \"Phase1CombatAI\"
+	add_child(combat_ai)
+	print(\"✅ Phase1CombatAI added to: \", name)
+	
+	print(\"NPCShip initialization complete: \", name)
+
+func _integrate_forces(state):
+	\"\"\"Handle physics with AI input\"\"\"
+	
+	# Get AI input
+	var ai_turn = get_meta(\"ai_turn_input\", 0.0)
+	var ai_thrust = get_meta(\"ai_thrust_input\", 0.0)
+	var ai_fire = get_meta(\"ai_fire_input\", false)
+	
+	# Apply rotation
+	if abs(ai_turn) > 0.05:
+		state.angular_velocity = ai_turn * rotation_speed
+	else:
+		state.angular_velocity *= 0.9
+	
+	# Apply thrust
+	if ai_thrust > 0.1:
+		var thrust_vector = Vector2(0, -thrust_power * ai_thrust).rotated(rotation)
+		state.apply_central_force(thrust_vector)
+		engine_particles.emitting = true
+	elif ai_thrust < -0.1:
+		var thrust_vector = Vector2(0, thrust_power * abs(ai_thrust)).rotated(rotation)
+		state.apply_central_force(thrust_vector)
+		engine_particles.emitting = true
+	else:
+		engine_particles.emitting = false
+	
+	# Handle weapon firing
+	if ai_fire and weapon_hardpoint:
+		weapon_hardpoint.try_fire()
+	
+	# Limit velocity
+	if state.linear_velocity.length() > max_velocity:
+		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
+
+func take_damage(amount: float, attacker: Node2D = null):
+	\"\"\"Take damage and notify AI\"\"\"
+	print(\"*** NPC TAKING DAMAGE *** Ship: \", name, \" Amount: \", amount, \" From: \", attacker.name if attacker else \"unknown\")
+	
+	# Apply damage to shields first, then hull
+	var shield_damage = min(amount, shields)
+	shields -= shield_damage
+	amount -= shield_damage
+	
+	if amount > 0:
+		hull -= amount
+	
+	print(\"NPC status - Hull: \", hull, \"/\", max_hull, \" Shields: \", shields, \"/\", max_shields)
+	
+	# CRITICAL: Notify AI that we were attacked
+	var combat_ai = get_node_or_null(\"Phase1CombatAI\")
+	if combat_ai and attacker:
+		combat_ai.notify_attacked_by(attacker)
+		print(\"✅ Notified AI of attack\")
+	else:
+		print(\"❌ Could not notify AI - combat_ai: \", combat_ai, \" attacker: \", attacker)
+	
+	# Check if destroyed
+	if hull <= 0:
+		print(\"*** NPC DESTROYED ***\")
+		destroy()
+
+func destroy():
+	\"\"\"Ship destroyed - FIXED: Explosion cleanup\"\"\"
+	print(\"*** NPC DESTROYED ***\")
+	
+	# Create explosion effect
+	var explosion = ColorRect.new()
+	explosion.size = Vector2(100, 100)
+	explosion.position = global_position - explosion.size / 2
+	explosion.color = Color.ORANGE
+	get_tree().current_scene.add_child(explosion)
+	
+	# FIXED: Use a simple timer instead of tween
+	var timer = Timer.new()
+	timer.wait_time = 0.5
+	timer.one_shot = true
+	timer.timeout.connect(func(): explosion.queue_free())
+	explosion.add_child(timer)
+	timer.start()
+	
+	print(\"Explosion created with 0.5s timer cleanup\")
+	
+	# Clean up the ship
+	cleanup_and_remove()
+
+func get_hull_percent() -> float:
+	if max_hull <= 0:
+		return 0
+	return hull / max_hull
+
+func apply_hue_shift(hue_shift: float):
+	if sprite and sprite.texture:
+		var hue_color = Color.from_hsv(hue_shift / 360.0, 0.6, 1.0)
+		sprite.modulate = hue_color
+
+func cleanup_and_remove():
+	print(\"NPC cleanup and remove: \", name)
+	var traffic_manager = get_tree().get_first_node_in_group(\"traffic_manager\")
+	if traffic_manager and traffic_manager.has_method(\"_on_npc_removed\"):
+		traffic_manager._on_npc_removed(self)
+	queue_free()
+
+# Keep for compatibility
+func configure_with_archetype(archetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
+	print(\"NPC configured for Phase 1 combat, faction: \", Government.Faction.keys()[ship_faction])
+"
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fi5k5"]
 radius = 24.0
@@ -12,7 +185,7 @@ radius = 24.0
 gravity_scale = 0.0
 linear_damp = 0.1
 angular_damp = 1.0
-script = ExtResource("1_npc")
+script = SubResource("GDScript_sg80l")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_sprite")
