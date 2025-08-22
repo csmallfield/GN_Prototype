@@ -1,5 +1,5 @@
 # =============================================================================
-# COMBAT UI - Shield and Hull display (Static Test Version)
+# COMBAT UI - Shield and Hull display connected to PlayerShip
 # =============================================================================
 # CombatUI.gd
 extends Control
@@ -10,25 +10,55 @@ class_name CombatUI
 @onready var shield_label: Label = $MainContainer/ShieldContainer/ShieldLabel
 @onready var hull_label: Label = $MainContainer/HullContainer/HullLabel
 
-# Test values since PlayerShip doesn't have working combat stats yet
-var test_shields: float = 50.0
-var test_max_shields: float = 50.0
-var test_hull: float = 100.0
-var test_max_hull: float = 100.0
+# Reference to player ship
+var player_ship: Node2D = null
 
 func _ready():
 	# Style the progress bars
 	setup_progress_bar_styles()
 	
-	# Show initial test values
+	# Get reference to player ship
+	connect_to_player_ship()
+	
+	print("CombatUI: Connected to player ship combat system")
+
+func _process(_delta):
+	# Continuously update the UI to catch shield recharging and other changes
+	if player_ship:
+		update_shield_display()
+		update_hull_display()
+
+func connect_to_player_ship():
+	"""Connect to the player ship and its combat system"""
+	# Get player ship from UniverseManager
+	player_ship = UniverseManager.player_ship
+	
+	if not player_ship:
+		print("CombatUI: Player ship not found, will retry...")
+		# Try again next frame if player ship isn't ready yet
+		call_deferred("retry_connection")
+		return
+	
+	# Connect to combat system signals if available
+	var combat_system = player_ship.get_node_or_null("ShipCombatSystem")
+	if combat_system:
+		# Connect damage signals for immediate updates
+		if not combat_system.hull_damaged.is_connected(_on_hull_damaged):
+			combat_system.hull_damaged.connect(_on_hull_damaged)
+		if not combat_system.shields_damaged.is_connected(_on_shields_damaged):
+			combat_system.shields_damaged.connect(_on_shields_damaged)
+		print("CombatUI: Connected to combat system signals")
+	else:
+		print("CombatUI: No combat system found, will use direct ship values")
+	
+	# Initialize display with current values
 	update_shield_display()
 	update_hull_display()
-	
-	print("CombatUI: Using test values since PlayerShip combat isn't implemented yet")
-	print("Test controls:")
-	print("  1 - Damage shields")
-	print("  2 - Damage hull") 
-	print("  3 - Restore health")
+
+func retry_connection():
+	"""Retry connecting to player ship if it wasn't available initially"""
+	if not player_ship:
+		connect_to_player_ship()
 
 func setup_progress_bar_styles():
 	"""Set up the visual styles for the progress bars"""
@@ -42,28 +72,14 @@ func setup_progress_bar_styles():
 	hull_fill.bg_color = Color.GREEN
 	hull_bar.add_theme_stylebox_override("fill", hull_fill)
 
-#func _input(event):
-	#"""Handle test input"""
-	#if not OS.is_debug_build():
-		#return
-		
-	#if event is InputEventKey and event.pressed:
-		#match event.keycode:
-			#KEY_1:
-				#debug_damage_shields(15.0)
-			#KEY_2:
-				#debug_damage_hull(10.0)
-			#KEY_3:
-				#debug_restore_health()
-
 func update_shield_display():
-	"""Update the shield bar and label using test values"""
-	if not shield_bar or not shield_label:
+	"""Update the shield bar and label with current player ship values"""
+	if not shield_bar or not shield_label or not player_ship:
 		return
 	
-	# Use test values
-	var current_shields = test_shields
-	var max_shields = test_max_shields
+	# Get current values from player ship
+	var current_shields = get_player_shields()
+	var max_shields = get_player_max_shields()
 	
 	# Avoid division by zero
 	if max_shields <= 0:
@@ -85,13 +101,13 @@ func update_shield_display():
 		shield_label.add_theme_color_override("font_color", Color.ORANGE)
 
 func update_hull_display():
-	"""Update the hull bar and label using test values"""
-	if not hull_bar or not hull_label:
+	"""Update the hull bar and label with current player ship values"""
+	if not hull_bar or not hull_label or not player_ship:
 		return
 	
-	# Use test values
-	var current_hull = test_hull
-	var max_hull = test_max_hull
+	# Get current values from player ship
+	var current_hull = get_player_hull()
+	var max_hull = get_player_max_hull()
 	
 	# Avoid division by zero
 	if max_hull <= 0:
@@ -112,27 +128,77 @@ func update_hull_display():
 	else:
 		hull_label.add_theme_color_override("font_color", Color.RED)
 
-# Debug methods for testing the UI
-func debug_damage_shields(amount: float = 10.0):
-	"""Debug method to test shield damage on UI"""
-	print("CombatUI Debug: Applying ", amount, " shield damage to test values")
-	var old_shields = test_shields
-	test_shields = max(0, test_shields - amount)
-	print("Test Shields: ", old_shields, " -> ", test_shields)
-	update_shield_display()
+func get_player_shields() -> float:
+	"""Get current shield value from player ship"""
+	if not player_ship:
+		return 0.0
+	
+	# Read directly from PlayerShip properties (where damage is actually applied)
+	if "shields" in player_ship:
+		return player_ship.shields
+	
+	# Fallback to combat system if direct property doesn't exist
+	var combat_system = player_ship.get_node_or_null("ShipCombatSystem")
+	if combat_system and "current_shields" in combat_system:
+		return combat_system.current_shields
+	
+	return 0.0
 
-func debug_damage_hull(amount: float = 10.0):
-	"""Debug method to test hull damage on UI"""
-	print("CombatUI Debug: Applying ", amount, " hull damage to test values")
-	var old_hull = test_hull
-	test_hull = max(0, test_hull - amount)
-	print("Test Hull: ", old_hull, " -> ", test_hull)
-	update_hull_display()
+func get_player_max_shields() -> float:
+	"""Get max shield value from player ship"""
+	if not player_ship:
+		return 1.0
+	
+	# Read directly from PlayerShip properties
+	if "max_shields" in player_ship:
+		return player_ship.max_shields
+	
+	# Fallback to combat system
+	var combat_system = player_ship.get_node_or_null("ShipCombatSystem")
+	if combat_system and "max_shields" in combat_system:
+		return combat_system.max_shields
+	
+	return 1.0
 
-func debug_restore_health():
-	"""Debug method to restore full health to test values"""
-	test_shields = test_max_shields
-	test_hull = test_max_hull
-	print("CombatUI Debug: Test health restored to full")
-	update_shield_display()
-	update_hull_display()
+func get_player_hull() -> float:
+	"""Get current hull value from player ship"""
+	if not player_ship:
+		return 0.0
+	
+	# Read directly from PlayerShip properties (where damage is actually applied)
+	if "hull" in player_ship:
+		return player_ship.hull
+	
+	# Fallback to combat system
+	var combat_system = player_ship.get_node_or_null("ShipCombatSystem")
+	if combat_system and "current_hull" in combat_system:
+		return combat_system.current_hull
+	
+	return 0.0
+
+func get_player_max_hull() -> float:
+	"""Get max hull value from player ship"""
+	if not player_ship:
+		return 1.0
+	
+	# Read directly from PlayerShip properties
+	if "max_hull" in player_ship:
+		return player_ship.max_hull
+	
+	# Fallback to combat system
+	var combat_system = player_ship.get_node_or_null("ShipCombatSystem")
+	if combat_system and "max_hull" in combat_system:
+		return combat_system.max_hull
+	
+	return 1.0
+
+# Signal handlers for immediate updates when damage occurs
+func _on_hull_damaged(current_hull: float, max_hull: float):
+	"""Called when player ship hull takes damage"""
+	# The _process loop will handle the visual update
+	pass
+
+func _on_shields_damaged(current_shields: float, max_shields: float):
+	"""Called when player ship shields take damage"""
+	# The _process loop will handle the visual update
+	pass

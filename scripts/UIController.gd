@@ -1,5 +1,5 @@
 # =============================================================================
-# UPDATED UI CONTROLLER - Scene Loading Version
+# UPDATED UI CONTROLLER - Scene Loading Version (Debug Code Removed)
 # =============================================================================
 # UIController.gd
 extends Control
@@ -64,18 +64,6 @@ func _input(event):
 	if event.is_action_pressed("ui_cancel") and hyperspace_map and hyperspace_map.visible:
 		hyperspace_map.hide_map()
 		get_viewport().set_input_as_handled()
-	
-	# Debug keys for testing combat UI (only in debug builds)
-	if OS.is_debug_build() and combat_ui:
-		if event.is_action_pressed("ui_up"):  # Arrow up key
-			combat_ui.debug_damage_shields(15.0)
-			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("ui_down"):  # Arrow down key
-			combat_ui.debug_damage_hull(10.0)
-			get_viewport().set_input_as_handled()
-		elif event.is_action_pressed("ui_left"):  # Arrow left key
-			combat_ui.debug_restore_health()
-			get_viewport().set_input_as_handled()
 
 # Method to adjust minimap settings at runtime (for debugging/tuning)
 func set_minimap_zoom(zoom: float):

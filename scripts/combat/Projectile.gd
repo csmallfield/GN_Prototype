@@ -146,7 +146,39 @@ func find_ship_from_collision(collision_target: Node) -> Node:
 	# If we couldn't find a ship, return the original target and let the caller handle it
 	return collision_target
 
+
+
 func create_hit_effect(pos: Vector2):
-	"""Create a simple hit effect"""
-	# You can expand this later with particles, but for now just print
-	print("*** HIT EFFECT at ", pos, " ***")
+	"""Create a simple hit effect at the impact point"""
+	# Create a small square for the impact effect
+	var impact_effect = ColorRect.new()
+	impact_effect.name = "ImpactEffect"
+	# Or comment out the above two lines and activate the below ones
+	#var impact_effect = Sprite2D.new()
+	#impact_effect.texture = load("res://sprites/effects/impact_spark.png")
+	
+	# Make it a small bright square
+	impact_effect.size = Vector2(16, 16)  # 8x8 pixel square
+	impact_effect.color = Color.WHITE  # Bright orange impact
+	
+	# Center it on the impact point
+	impact_effect.position = pos - impact_effect.size / 2
+	
+	# Add to the scene FIRST
+	get_tree().current_scene.add_child(impact_effect)
+	
+	# IMPORTANT: Create tween on the impact_effect, not the projectile!
+	var tween = impact_effect.create_tween()
+	
+	# Start small and scale up while fading out
+	impact_effect.scale = Vector2(0.5, 0.5)
+	impact_effect.modulate = Color.ORANGE
+	
+	# Animate scale and fade simultaneously
+	tween.parallel().tween_property(impact_effect, "scale", Vector2(2.0, 2.0), 0.3)
+	tween.parallel().tween_property(impact_effect, "modulate", Color.TRANSPARENT, 0.3)
+	
+	# Clean up after animation
+	tween.tween_callback(impact_effect.queue_free)
+	
+	print("Impact effect created at ", pos)

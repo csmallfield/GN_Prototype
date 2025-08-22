@@ -14,11 +14,11 @@ var hyperspace_entry_speed: float = 800.0
 
 
 var hull: float = 500.0        # Player has more health
-var max_hull: float = 150.0
-var shields: float = 75.0
-var max_shields: float = 75.0
+var max_hull: float = 500.0
+var shields: float = 100.0
+var max_shields: float = 100.0
 var shield_recharge_timer: float = 0.0
-var shield_recharge_delay: float = 3.0 
+var shield_recharge_delay: float = 2.0 
 
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles
