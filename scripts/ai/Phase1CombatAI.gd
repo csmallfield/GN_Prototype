@@ -66,17 +66,27 @@ func setup_behavior_tree():
 	
 	# Priority 1: Combat behavior (if being attacked)
 	var combat_sequence = create_combat_sequence()
-	root_selector.add_child_node(combat_sequence)
+	if combat_sequence:
+		combat_sequence.tree = behavior_tree  # Ensure tree reference
+		root_selector.add_child_node(combat_sequence)
 	
 	# Priority 2: Flee behavior (if critically damaged)
 	var flee_sequence = create_flee_sequence()
-	root_selector.add_child_node(flee_sequence)
+	if flee_sequence:
+		flee_sequence.tree = behavior_tree  # Ensure tree reference
+		root_selector.add_child_node(flee_sequence)
 	
 	# Priority 3: Archetype-specific peaceful behavior
 	var peaceful_behavior = create_peaceful_behavior()
-	root_selector.add_child_node(peaceful_behavior)
+	if peaceful_behavior:
+		peaceful_behavior.tree = behavior_tree  # Ensure tree reference
+		root_selector.add_child_node(peaceful_behavior)
 	
 	behavior_tree.set_root(root_selector)
+	
+	# CRITICAL: Propagate tree reference to all nodes
+	propagate_tree_reference(root_selector, behavior_tree)
+	
 	print("✅ Behavior tree created successfully for ", archetype.archetype_name)
 
 func create_combat_sequence() -> BehaviorNodeClass:
@@ -105,6 +115,17 @@ func create_flee_sequence() -> BehaviorNodeClass:
 	flee_sequence.add_child_node(flee_action)
 	
 	return flee_sequence
+
+func propagate_tree_reference(node: BehaviorNodeClass, tree_ref):
+	"""Recursively set tree reference on all nodes"""
+	if not node:
+		return
+	
+	node.tree = tree_ref
+	
+	# Recursively set tree reference on all children
+	for child in node.children:
+		propagate_tree_reference(child, tree_ref)
 
 func create_peaceful_behavior() -> BehaviorNodeClass:
 	"""Create peaceful behavior based on archetype"""
@@ -245,6 +266,10 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ TraderPeacefulBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		# Inline current time calculation
 		var time = Time.get_time_dict_from_system()
@@ -276,6 +301,9 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 		return BehaviorTreeClass.Status.RUNNING
 	
 	func find_nearest_trading_destination() -> Node2D:
+		if not tree:
+			return null
+			
 		var ship = tree.owner_ship
 		var system_scene = ship.get_tree().get_first_node_in_group("system_scene")
 		if not system_scene:
@@ -305,6 +333,9 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 		return valid_destinations[randi() % pick_range].body
 	
 	func gentle_wander():
+		if not tree:
+			return
+			
 		var ship = tree.owner_ship
 		var wander_direction = Vector2.from_angle(randf() * TAU)
 		var target_angle = wander_direction.angle() + PI/2
@@ -319,6 +350,9 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 		ship.set_meta("ai_fire_input", false)
 	
 	func fly_toward_target(target_pos: Vector2, speed: float):
+		if not tree:
+			return
+			
 		var ship = tree.owner_ship
 		var direction = (target_pos - ship.global_position).normalized()
 		var target_angle = direction.angle() + PI/2
@@ -343,6 +377,10 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ PiratePeacefulBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		
 		# Initialize patrol if needed
@@ -373,6 +411,9 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 			patrol_points.append(point)
 	
 	func scan_for_opportunities():
+		if not tree:
+			return
+			
 		var ship = tree.owner_ship
 		var targets = find_potential_prey()
 		
@@ -382,6 +423,9 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 			print("Pirate ", ship.name, " spotted potential target: ", closest.ship.name, " at distance ", closest.distance)
 	
 	func find_potential_prey() -> Array:
+		if not tree:
+			return []
+			
 		var ship = tree.owner_ship
 		var potential_targets = []
 		var scan_range = 1200.0
@@ -404,6 +448,9 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 		return potential_targets
 	
 	func patrol_area():
+		if not tree:
+			return
+			
 		var ship = tree.owner_ship
 		
 		if patrol_points.is_empty():
@@ -439,6 +486,10 @@ class MilitaryPeacefulBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ MilitaryPeacefulBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		
 		# Initialize systematic patrol grid
@@ -473,6 +524,9 @@ class MilitaryPeacefulBehavior extends BehaviorNodeClass:
 				patrol_grid.append(point)
 	
 	func patrol_grid_systematically():
+		if not tree:
+			return
+			
 		var ship = tree.owner_ship
 		
 		if patrol_grid.is_empty():
@@ -510,6 +564,10 @@ class DefaultPeacefulBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ DefaultPeacefulBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		drift_timer += ship.get_process_delta_time()
 		
@@ -542,6 +600,10 @@ class CombatActiveCondition extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.CONDITION
 	
 	func execute_condition() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ CombatActiveCondition: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var in_combat = tree.get_blackboard_value("in_combat", false)
 		var attacker = tree.get_blackboard_value("attacker", null)
 		
@@ -556,6 +618,10 @@ class FleeCondition extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.CONDITION
 	
 	func execute_condition() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ FleeCondition: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		if not ship.has_method("get_hull_percent"):
 			return BehaviorTreeClass.Status.FAILURE
@@ -572,6 +638,10 @@ class CombatBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ CombatBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		var attacker = tree.get_blackboard_value("attacker", null)
 		
@@ -591,6 +661,10 @@ class FleeBehavior extends BehaviorNodeClass:
 		node_type = BehaviorTreeClass.NodeType.ACTION
 	
 	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			print("❌ FleeBehavior: tree is null!")
+			return BehaviorTreeClass.Status.FAILURE
+		
 		var ship = tree.owner_ship
 		var attacker = tree.get_blackboard_value("attacker", null)
 		
