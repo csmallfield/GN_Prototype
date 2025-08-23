@@ -531,7 +531,7 @@ func _input(event):
 		else:
 			print("❌ No hardpoint found!")
 			
-	debug_combat_input(event)
+	#debug_combat_input(event)
 #TEMP above this line
 
 func interact_with_target():
@@ -894,38 +894,38 @@ func create_flash_overlay():
 # =============================================================================
 
 # Add this to your _input() method in PlayerShip.gd
-func debug_combat_input(event):
-	"""Debug combat functionality"""
-	if not OS.is_debug_build():
-		return
+#func debug_combat_input(event):
+	#"""Debug combat functionality"""
+	#if not OS.is_debug_build():
+		#return
 	
-	if event.is_action_pressed("debug_toggle"):  # F12 key
-		test_npc_damage()
+	#if event.is_action_pressed("debug_toggle"):  # F12 key
+		#test_npc_damage()
 
-func test_npc_damage():
-	"""Debug: damage nearby NPCs to test their combat AI"""
-	print("🧪 Testing NPC damage and combat AI...")
+#func test_npc_damage():
+	#"""Debug: damage nearby NPCs to test their combat AI"""
+	#print("🧪 Testing NPC damage and combat AI...")
 	
-	var nearby_npcs = get_tree().get_nodes_in_group("npc_ships")
-	var damaged_count = 0
+	#var nearby_npcs = get_tree().get_nodes_in_group("npc_ships")
+	#var damaged_count = 0
 	
-	for npc in nearby_npcs:
-		if not is_instance_valid(npc):
-			continue
+	#for npc in nearby_npcs:
+		#if not is_instance_valid(npc):
+			#continue
 		
-		var distance = global_position.distance_to(npc.global_position)
-		if distance < 1000:  # Damage NPCs within 1000 units
-			print("Damaging NPC: ", npc.name, " at distance: ", distance)
-			npc.take_damage(25.0, self)  # Damage NPC with player as attacker
-			damaged_count += 1
+		#var distance = global_position.distance_to(npc.global_position)
+		#if distance < 1000:  # Damage NPCs within 1000 units
+			#print("Damaging NPC: ", npc.name, " at distance: ", distance)
+			#npc.take_damage(25.0, self)  # Damage NPC with player as attacker
+			#damaged_count += 1
 	
-	if damaged_count == 0:
-		print("No NPCs found within 1000 units")
+	#if damaged_count == 0:
+		#print("No NPCs found within 1000 units")
 		
 		# Spawn a test NPC if none exist
-		spawn_test_npc()
-	else:
-		print("Damaged ", damaged_count, " NPCs - they should now attack the player")
+		#spawn_test_npc()
+	#else:
+		#print("Damaged ", damaged_count, " NPCs - they should now attack the player")
 
 func spawn_test_npc():
 	"""Spawn a test NPC near the player for combat testing"""

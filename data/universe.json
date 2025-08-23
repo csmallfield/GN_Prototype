@@ -15,8 +15,13 @@
 	  },
 	  "traffic": {
 		"spawn_frequency": 1.0,
-		"max_npcs": 200,
+		"max_npcs": 20,
 		"spawn_frequency_variance": 3.0,
+		"archetype_weights": {
+		  "trader": 1,
+		  "military": 0.0,
+		  "pirate": 0.0
+		},
 		"npc_config": {
 		  "thrust_power": 100.0,
 		  "rotation_speed": 3.2,
