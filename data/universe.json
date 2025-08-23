@@ -15,7 +15,7 @@
 	  },
 	  "traffic": {
 		"spawn_frequency": 1.0,
-		"max_npcs": 20,
+		"max_npcs": 200,
 		"spawn_frequency_variance": 3.0,
 		"npc_config": {
 		  "thrust_power": 100.0,

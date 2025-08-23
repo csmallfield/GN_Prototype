@@ -8,15 +8,15 @@ class_name PlayerShip
 # Ship stats - now loaded from ShipManager instead of hardcoded
 var thrust_power: float = 500.0
 var rotation_speed: float = 3.0
-var max_velocity: float = 40.0
+var max_velocity: float = 400.0
 var hyperspace_thrust_power: float = 1500.0
 var hyperspace_entry_speed: float = 800.0
 
 
-var hull: float = 500.0        # Player has more health
+var hull: float = 1000.0        # Player has more health
 var max_hull: float = 500.0
-var shields: float = 10000.0
-var max_shields: float = 100.0
+var shields: float = 1000.0
+var max_shields: float = 1000.0
 var shield_recharge_timer: float = 0.0
 var shield_recharge_delay: float = 2.0 
 
