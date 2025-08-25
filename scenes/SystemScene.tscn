@@ -23,5 +23,3 @@ position = Vector2(402, 579)
 
 [node name="TrafficManager" type="Node2D" parent="."]
 script = ExtResource("4_cijgp")
-spawn_distance = null
-debug_mode = null
