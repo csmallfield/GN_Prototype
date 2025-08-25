@@ -1,5 +1,5 @@
 # =============================================================================
-# PHASE 1 COMBAT AI - Enhanced with Social Combat Integration
+# PHASE 1 COMBAT AI - Enhanced with Social Combat Integration and Improved Peaceful Behaviors
 # =============================================================================
 extends Node
 class_name Phase1CombatAI
@@ -107,18 +107,9 @@ func setup_behavior_tree():
 # ENHANCED DAMAGE HANDLING - Now integrates with Social Combat System
 # =============================================================================
 
-# =============================================================================
-# FIXED: Phase1CombatAI.notify_attacked_by() method
-# Remove the recursive call to social_combat_system.on_ship_attacked()
-# =============================================================================
-
 func notify_attacked_by(attacker_ship: Node2D):
 	"""Called when ship takes damage - FIXED: No recursive social combat call"""
 	print("*** ", owner_ship.name, " ATTACKED BY ", attacker_ship.name, " ***")
-	
-	# REMOVED: The recursive call that was causing infinite recursion
-	# The social combat system already processed this attack and is now
-	# telling us about it - we don't need to call it back!
 	
 	# Set attacker and enter combat mode
 	attacker = attacker_ship
@@ -153,9 +144,8 @@ func clear_attacker():
 	
 	print("*** ", owner_ship.name, " cleared attacker - returning to peaceful mode ***")
 
-
 # =============================================================================
-# BEHAVIOR TREE CREATION (Unchanged from previous version)
+# BEHAVIOR TREE CREATION
 # =============================================================================
 
 func create_combat_sequence() -> BehaviorNodeClass:
@@ -228,7 +218,7 @@ func create_default_behavior() -> BehaviorNodeClass:
 	return default_action
 
 # =============================================================================
-# MAIN PROCESS LOOP (Enhanced with social combat awareness)
+# MAIN PROCESS LOOP
 # =============================================================================
 
 func _process(delta):
@@ -261,7 +251,7 @@ func update_state():
 		attacker = null
 
 # =============================================================================
-# FALLBACK AND UTILITY METHODS (Unchanged)
+# FALLBACK AND UTILITY METHODS
 # =============================================================================
 
 func fallback_behavior():
@@ -368,11 +358,8 @@ static func angle_difference_static(current: float, target: float) -> float:
 	return diff
 
 # =============================================================================
-# ALL BEHAVIOR CLASSES (Unchanged from previous version)
+# CORE BEHAVIOR CLASSES
 # =============================================================================
-
-# [Include all the behavior classes from the previous version - TraderPeacefulBehavior, etc.]
-# For brevity, I'm including just the key ones:
 
 class CombatActiveCondition extends BehaviorNodeClass:
 	func _init():
@@ -454,14 +441,16 @@ class FleeBehavior extends BehaviorNodeClass:
 		return BehaviorTreeClass.Status.RUNNING
 
 # =============================================================================
-# ALL PEACEFUL BEHAVIORS - Complete Implementation
+# ENHANCED PEACEFUL BEHAVIORS - More Realistic Ship Movement
 # =============================================================================
 
-# Trader peaceful behavior
 class TraderPeacefulBehavior extends BehaviorNodeClass:
-	var last_destination_check: float = 0.0
-	var destination_check_interval: float = 15.0
+	var current_route_state: String = "traveling"  # traveling, visiting, departing
 	var current_target_body: Node2D = null
+	var visit_start_time: float = 0.0
+	var visit_duration: float = 15.0
+	var route_check_timer: float = 0.0
+	var route_check_interval: float = 30.0
 	
 	func _init():
 		node_type = BehaviorTreeClass.NodeType.ACTION
@@ -471,33 +460,183 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 			return BehaviorTreeClass.Status.FAILURE
 		
 		var ship = tree.owner_ship
-		var time = Time.get_time_dict_from_system()
-		var current_time = time.hour * 3600 + time.minute * 60 + time.second
+		route_check_timer += ship.get_process_delta_time()
 		
-		if current_time - last_destination_check > destination_check_interval:
-			current_target_body = find_nearest_trading_destination()
-			last_destination_check = current_time
-			
+		match current_route_state:
+			"traveling":
+				handle_traveling_state()
+			"visiting":
+				handle_visiting_state()
+			"departing":
+				handle_departing_state()
+		
+		return BehaviorTreeClass.Status.RUNNING
+	
+	func handle_traveling_state():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		
+		# Choose destination if we don't have one
+		if not current_target_body or not is_instance_valid(current_target_body):
+			current_target_body = find_trading_destination()
 			if current_target_body:
-				print("Trader ", ship.name, " heading to ", current_target_body.celestial_data.get("name", "Unknown"))
+				print("Trader ", ship.name, " traveling to ", current_target_body.celestial_data.get("name", "Unknown"))
 		
 		if current_target_body and is_instance_valid(current_target_body):
 			var distance = ship.global_position.distance_to(current_target_body.global_position)
 			
+			# Check if we've arrived
 			if distance <= 200.0:
-				current_target_body = null
-				return BehaviorTreeClass.Status.SUCCESS
+				print("Trader ", ship.name, " arrived at ", current_target_body.celestial_data.get("name", "Unknown"))
+				start_visiting()
+				return
 			
-			fly_toward_target(current_target_body.global_position, 0.6)
-			return BehaviorTreeClass.Status.RUNNING
-		
-		gentle_wander()
-		return BehaviorTreeClass.Status.RUNNING
+			# Travel toward destination with realistic speed
+			travel_to_destination(current_target_body.global_position, distance)
+		else:
+			# No destination found - gentle cruise
+			gentle_cruise()
 	
-	func find_nearest_trading_destination() -> Node2D:
+	func handle_visiting_state():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		
+		# Check if visit time is complete
+		var current_time = get_current_time()
+		var visit_time = current_time - visit_start_time
+		
+		if visit_time >= visit_duration:
+			print("Trader ", ship.name, " finished visiting, choosing next action")
+			choose_next_action()
+			return
+		
+		# Station keeping behavior - stay near destination
+		if current_target_body and is_instance_valid(current_target_body):
+			station_keeping_near_destination()
+		else:
+			# Target disappeared, find new one
+			current_route_state = "traveling"
+	
+	func handle_departing_state():
+		if not tree:
+			return
+		
+		# Move away from current location
+		var ship = tree.owner_ship
+		var departure_direction = ship.global_position.normalized()
+		if departure_direction.length() < 0.1:
+			departure_direction = Vector2(1, 0).rotated(randf() * TAU)
+		
+		var departure_target = ship.global_position + departure_direction * 1000.0
+		travel_to_destination(departure_target, ship.global_position.distance_to(departure_target))
+		
+		# After traveling for a bit, choose new destination
+		if route_check_timer > 10.0:
+			current_route_state = "traveling"
+			current_target_body = null
+			route_check_timer = 0.0
+	
+	func start_visiting():
+		current_route_state = "visiting"
+		visit_start_time = get_current_time()
+		visit_duration = randf_range(12.0, 25.0)
+		route_check_timer = 0.0
+	
+	func choose_next_action():
+		# 70% chance to visit another location, 30% chance to depart
+		if randf() < 0.7:
+			current_route_state = "traveling"
+			current_target_body = null  # Will choose new destination
+		else:
+			current_route_state = "departing"
+	
+	func travel_to_destination(target_pos: Vector2, distance: float):
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		var direction = (target_pos - ship.global_position).normalized()
+		var target_angle = direction.angle() + PI/2
+		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
+		
+		# Realistic speed adjustment based on distance
+		var base_speed = 0.5
+		var adjusted_speed = base_speed
+		
+		if distance < 400.0:
+			# Decelerate as we approach
+			adjusted_speed = base_speed * (distance / 400.0)
+			adjusted_speed = max(adjusted_speed, 0.15)  # Minimum approach speed
+		
+		# Smooth turning
+		var turn_input = 0.0
+		if abs(angle_diff) > 0.1:
+			turn_input = sign(angle_diff) * min(abs(angle_diff) * 1.5, 0.8)
+		
+		ship.set_meta("ai_thrust_input", adjusted_speed)
+		ship.set_meta("ai_turn_input", turn_input)
+		ship.set_meta("ai_fire_input", false)
+	
+	func station_keeping_near_destination():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		var target_pos = current_target_body.global_position
+		var distance = ship.global_position.distance_to(target_pos)
+		
+		# Gentle orbital movement around the destination
+		var orbital_radius = 180.0
+		var time = get_current_time()
+		var orbital_angle = (time * 0.3) + (hash(ship.get_instance_id()) % 628) / 100.0
+		var orbital_target = target_pos + Vector2.from_angle(orbital_angle) * orbital_radius
+		
+		if distance > orbital_radius * 1.5:
+			# Too far, gently return
+			travel_to_destination(orbital_target, distance)
+		else:
+			# Gentle drift
+			var drift_direction = (orbital_target - ship.global_position).normalized()
+			var target_angle = drift_direction.angle() + PI/2
+			var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
+			
+			var turn_input = 0.0
+			if abs(angle_diff) > 0.2:
+				turn_input = sign(angle_diff) * 0.3
+			
+			ship.set_meta("ai_thrust_input", 0.1)
+			ship.set_meta("ai_turn_input", turn_input)
+			ship.set_meta("ai_fire_input", false)
+	
+	func gentle_cruise():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		
+		# Very gentle wandering movement
+		var time = get_current_time()
+		var wander_angle = (time * 0.1) + (hash(ship.get_instance_id()) % 628) / 100.0
+		var wander_direction = Vector2.from_angle(wander_angle)
+		var target_angle = wander_direction.angle() + PI/2
+		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
+		
+		var turn_input = 0.0
+		if abs(angle_diff) > 0.3:
+			turn_input = sign(angle_diff) * 0.4
+		
+		ship.set_meta("ai_thrust_input", 0.25)
+		ship.set_meta("ai_turn_input", turn_input)
+		ship.set_meta("ai_fire_input", false)
+	
+	func find_trading_destination() -> Node2D:
 		if not tree:
 			return null
-			
+		
 		var ship = tree.owner_ship
 		var system_scene = ship.get_tree().get_first_node_in_group("system_scene")
 		if not system_scene:
@@ -513,56 +652,144 @@ class TraderPeacefulBehavior extends BehaviorNodeClass:
 		for body in bodies:
 			if body.has_method("can_interact") and body.can_interact():
 				var distance = ship.global_position.distance_to(body.global_position)
-				valid_destinations.append({"body": body, "distance": distance})
+				# Skip destinations that are too close (recently visited)
+				if distance > 300.0:
+					valid_destinations.append({"body": body, "distance": distance})
 		
 		if valid_destinations.is_empty():
 			return null
 		
+		# Prefer closer destinations but add some randomness
 		valid_destinations.sort_custom(func(a, b): return a.distance < b.distance)
-		
 		var pick_range = min(3, valid_destinations.size())
 		return valid_destinations[randi() % pick_range].body
 	
-	func gentle_wander():
-		if not tree:
-			return
-			
-		var ship = tree.owner_ship
-		var wander_direction = Vector2.from_angle(randf() * TAU)
-		var target_angle = wander_direction.angle() + PI/2
-		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
-		
-		var turn_input = 0.0
-		if abs(angle_diff) > 0.3:
-			turn_input = sign(angle_diff) * 0.4
-		
-		ship.set_meta("ai_thrust_input", 0.2)
-		ship.set_meta("ai_turn_input", turn_input)
-		ship.set_meta("ai_fire_input", false)
+	func get_current_time() -> float:
+		var time = Time.get_time_dict_from_system()
+		return time.hour * 3600 + time.minute * 60 + time.second
+
+class MilitaryPeacefulBehavior extends BehaviorNodeClass:
+	var patrol_points: Array[Vector2] = []
+	var current_patrol_index: int = 0
+	var patrol_state: String = "traveling"  # traveling, observing
+	var observation_timer: float = 0.0
+	var observation_duration: float = 8.0
 	
-	func fly_toward_target(target_pos: Vector2, speed: float):
+	func _init():
+		node_type = BehaviorTreeClass.NodeType.ACTION
+	
+	func execute_action() -> BehaviorTreeClass.Status:
+		if not tree:
+			return BehaviorTreeClass.Status.FAILURE
+		
+		if patrol_points.is_empty():
+			setup_military_patrol_route()
+		
+		match patrol_state:
+			"traveling":
+				handle_patrol_traveling()
+			"observing":
+				handle_patrol_observation()
+		
+		return BehaviorTreeClass.Status.RUNNING
+	
+	func setup_military_patrol_route():
+		patrol_points.clear()
+		
+		# Create patrol route between key locations
+		var system_scene = tree.owner_ship.get_tree().get_first_node_in_group("system_scene")
+		if system_scene:
+			var celestial_container = system_scene.get_node_or_null("CelestialBodies")
+			if celestial_container:
+				# Add major celestial bodies to patrol route
+				for body in celestial_container.get_children():
+					if body.celestial_data and body.celestial_data.get("can_land", false):
+						patrol_points.append(body.global_position)
+		
+		# Add system center
+		patrol_points.append(Vector2.ZERO)
+		
+		# Add some strategic points around the system
+		for i in range(3):
+			var angle = (float(i) / 3.0) * TAU
+			var strategic_point = Vector2.from_angle(angle) * 1200.0
+			patrol_points.append(strategic_point)
+		
+		print("Military patrol established with ", patrol_points.size(), " waypoints")
+	
+	func handle_patrol_traveling():
 		if not tree:
 			return
-			
+		
+		var ship = tree.owner_ship
+		
+		if patrol_points.is_empty():
+			return
+		
+		var target_point = patrol_points[current_patrol_index]
+		var distance = ship.global_position.distance_to(target_point)
+		
+		if distance <= 120.0:
+			# Arrived at patrol point
+			patrol_state = "observing"
+			observation_timer = 0.0
+			observation_duration = randf_range(6.0, 12.0)
+			print("Military patrol ", ship.name, " observing waypoint ", current_patrol_index)
+		else:
+			# Travel to patrol point with military precision
+			travel_to_patrol_point(target_point, distance)
+	
+	func handle_patrol_observation():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		observation_timer += ship.get_process_delta_time()
+		
+		if observation_timer >= observation_duration:
+			# Observation complete, move to next patrol point
+			current_patrol_index = (current_patrol_index + 1) % patrol_points.size()
+			patrol_state = "traveling"
+			print("Military patrol ", ship.name, " moving to next waypoint")
+		else:
+			# Slow rotation while observing
+			var rotation_speed = 0.5
+			ship.set_meta("ai_thrust_input", 0.0)
+			ship.set_meta("ai_turn_input", rotation_speed)
+			ship.set_meta("ai_fire_input", false)
+	
+	func travel_to_patrol_point(target_pos: Vector2, distance: float):
+		if not tree:
+			return
+		
 		var ship = tree.owner_ship
 		var direction = (target_pos - ship.global_position).normalized()
 		var target_angle = direction.angle() + PI/2
 		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
 		
-		var turn_input = 0.0
-		if abs(angle_diff) > 0.1:
-			turn_input = sign(angle_diff) * 0.7
+		# Military moves at steady, purposeful speed
+		var base_speed = 0.6
+		var adjusted_speed = base_speed
 		
-		ship.set_meta("ai_thrust_input", speed)
+		# Decelerate for final approach
+		if distance < 200.0:
+			adjusted_speed = base_speed * max(0.3, distance / 200.0)
+		
+		# Precise turning
+		var turn_input = 0.0
+		if abs(angle_diff) > 0.05:
+			turn_input = sign(angle_diff) * min(abs(angle_diff) * 2.0, 1.0)
+		
+		ship.set_meta("ai_thrust_input", adjusted_speed)
 		ship.set_meta("ai_turn_input", turn_input)
 		ship.set_meta("ai_fire_input", false)
 
-# Pirate peaceful behavior
 class PiratePeacefulBehavior extends BehaviorNodeClass:
-	var patrol_points: Array[Vector2] = []
-	var current_patrol_index: int = 0
-	var scan_timer: float = 0.0
-	var scan_interval: float = 3.0
+	var hunt_state: String = "prowling"  # prowling, stalking, lurking
+	var prowl_target: Vector2 = Vector2.ZERO
+	var prowl_timer: float = 0.0
+	var target_scan_timer: float = 0.0
+	var current_interest: Node2D = null
 	
 	func _init():
 		node_type = BehaviorTreeClass.NodeType.ACTION
@@ -572,54 +799,131 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 			return BehaviorTreeClass.Status.FAILURE
 		
 		var ship = tree.owner_ship
-		
-		# Initialize patrol if needed
-		if patrol_points.is_empty():
-			setup_pirate_patrol()
+		prowl_timer += ship.get_process_delta_time()
+		target_scan_timer += ship.get_process_delta_time()
 		
 		# Scan for potential targets periodically
-		scan_timer += ship.get_process_delta_time()
-		if scan_timer >= scan_interval:
+		if target_scan_timer >= 5.0:
 			scan_for_opportunities()
-			scan_timer = 0.0
+			target_scan_timer = 0.0
 		
-		# Patrol behavior
-		patrol_area()
+		match hunt_state:
+			"prowling":
+				handle_prowling()
+			"stalking":
+				handle_stalking()
+			"lurking":
+				handle_lurking()
+		
 		return BehaviorTreeClass.Status.RUNNING
 	
-	func setup_pirate_patrol():
-		# Create patrol pattern around high-traffic areas
-		var center = Vector2.ZERO  # System center is always at origin
-		var patrol_radius = 800.0
+	func handle_prowling():
+		if not tree:
+			return
 		
-		# Create irregular patrol pattern
-		for i in range(5):
-			var angle = (float(i) / 5.0) * TAU + randf_range(-0.5, 0.5)
-			var radius_variance = randf_range(0.7, 1.3)
-			var point = center + Vector2.from_angle(angle) * patrol_radius * radius_variance
-			patrol_points.append(point)
+		var ship = tree.owner_ship
+		
+		# Choose new prowl location periodically
+		if prowl_timer > 20.0 or prowl_target == Vector2.ZERO:
+			choose_new_prowl_location()
+			prowl_timer = 0.0
+		
+		var distance = ship.global_position.distance_to(prowl_target)
+		
+		if distance <= 150.0:
+			# Arrived at prowl location
+			if randf() < 0.4:  # 40% chance to lurk
+				hunt_state = "lurking"
+				prowl_timer = 0.0
+			else:
+				# Choose new location
+				choose_new_prowl_location()
+		else:
+			# Move toward prowl location
+			prowl_toward_target(prowl_target, distance)
+	
+	func handle_stalking():
+		# This would be implemented when we add piracy mechanics
+		# For now, just prowl
+		hunt_state = "prowling"
+	
+	func handle_lurking():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		
+		# Lurk for a while
+		if prowl_timer > 15.0:
+			hunt_state = "prowling"
+			choose_new_prowl_location()
+			return
+		
+		# Minimal movement while lurking
+		var time = get_current_time()
+		var drift_angle = (time * 0.05) + (hash(ship.get_instance_id()) % 628) / 100.0
+		var drift_direction = Vector2.from_angle(drift_angle)
+		var target_angle = drift_direction.angle() + PI/2
+		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
+		
+		var turn_input = 0.0
+		if abs(angle_diff) > 0.4:
+			turn_input = sign(angle_diff) * 0.2
+		
+		ship.set_meta("ai_thrust_input", 0.08)  # Very slow
+		ship.set_meta("ai_turn_input", turn_input)
+		ship.set_meta("ai_fire_input", false)
+	
+	func choose_new_prowl_location():
+		# Choose locations near trade routes or planets
+		var trade_locations = find_trade_locations()
+		
+		if not trade_locations.is_empty():
+			var chosen_location = trade_locations[randi() % trade_locations.size()]
+			# Position near but not too close to the location
+			var offset_angle = randf() * TAU
+			var offset_distance = randf_range(300.0, 600.0)
+			prowl_target = chosen_location + Vector2.from_angle(offset_angle) * offset_distance
+		else:
+			# Random location in system
+			var angle = randf() * TAU
+			var distance = randf_range(800.0, 1500.0)
+			prowl_target = Vector2.from_angle(angle) * distance
+	
+	func prowl_toward_target(target_pos: Vector2, distance: float):
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		var direction = (target_pos - ship.global_position).normalized()
+		var target_angle = direction.angle() + PI/2
+		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
+		
+		# Pirates move stealthily
+		var base_speed = 0.35
+		var adjusted_speed = base_speed
+		
+		# Slow down when approaching
+		if distance < 300.0:
+			adjusted_speed = base_speed * max(0.2, distance / 300.0)
+		
+		var turn_input = 0.0
+		if abs(angle_diff) > 0.15:
+			turn_input = sign(angle_diff) * 0.6
+		
+		ship.set_meta("ai_thrust_input", adjusted_speed)
+		ship.set_meta("ai_turn_input", turn_input)
+		ship.set_meta("ai_fire_input", false)
 	
 	func scan_for_opportunities():
 		if not tree:
 			return
-			
-		var ship = tree.owner_ship
-		var targets = find_potential_prey()
 		
-		if targets.size() > 0:
-			# Just observe for now - actual piracy comes later
-			var closest = targets[0]
-			print("Pirate ", ship.name, " spotted potential target: ", closest.ship.name, " at distance ", closest.distance)
-	
-	func find_potential_prey() -> Array:
-		if not tree:
-			return []
-			
 		var ship = tree.owner_ship
 		var potential_targets = []
-		var scan_range = 1200.0
+		var scan_range = 1000.0
 		
-		# Look for player and other non-pirate ships
+		# Look for player and other traders
 		var all_ships = ship.get_tree().get_nodes_in_group("npc_ships")
 		if UniverseManager.player_ship:
 			all_ships.append(UniverseManager.player_ship)
@@ -632,120 +936,35 @@ class PiratePeacefulBehavior extends BehaviorNodeClass:
 			if distance <= scan_range:
 				potential_targets.append({"ship": target, "distance": distance})
 		
-		# Sort by distance
-		potential_targets.sort_custom(func(a, b): return a.distance < b.distance)
-		return potential_targets
+		if potential_targets.size() > 0:
+			var closest = potential_targets[0]
+			print("Pirate ", ship.name, " spotted potential target: ", closest.ship.name)
 	
-	func patrol_area():
+	func find_trade_locations() -> Array[Vector2]:
 		if not tree:
-			return
-			
+			return []
+		
 		var ship = tree.owner_ship
+		var locations = []
 		
-		if patrol_points.is_empty():
-			return
+		var system_scene = ship.get_tree().get_first_node_in_group("system_scene")
+		if system_scene:
+			var celestial_container = system_scene.get_node_or_null("CelestialBodies")
+			if celestial_container:
+				for body in celestial_container.get_children():
+					if body.has_method("can_interact") and body.can_interact():
+						locations.append(body.global_position)
 		
-		var current_target = patrol_points[current_patrol_index]
-		var distance = ship.global_position.distance_to(current_target)
-		
-		# Move to next waypoint if close enough
-		if distance <= 150.0:
-			current_patrol_index = (current_patrol_index + 1) % patrol_points.size()
-		
-		# Fly toward current patrol point
-		var direction = (current_target - ship.global_position).normalized()
-		var target_angle = direction.angle() + PI/2
-		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
-		
-		var turn_input = 0.0
-		if abs(angle_diff) > 0.1:
-			turn_input = sign(angle_diff) * 0.6
-		
-		ship.set_meta("ai_thrust_input", 0.5)
-		ship.set_meta("ai_turn_input", turn_input)
-		ship.set_meta("ai_fire_input", false)
+		return locations
+	
+	func get_current_time() -> float:
+		var time = Time.get_time_dict_from_system()
+		return time.hour * 3600 + time.minute * 60 + time.second
 
-# Military peaceful behavior
-class MilitaryPeacefulBehavior extends BehaviorNodeClass:
-	var patrol_grid: Array[Vector2] = []
-	var current_grid_index: int = 0
-	var grid_pause_timer: float = 0.0
-	
-	func _init():
-		node_type = BehaviorTreeClass.NodeType.ACTION
-	
-	func execute_action() -> BehaviorTreeClass.Status:
-		if not tree:
-			return BehaviorTreeClass.Status.FAILURE
-		
-		var ship = tree.owner_ship
-		
-		# Initialize systematic patrol grid
-		if patrol_grid.is_empty():
-			setup_military_patrol_grid()
-		
-		# Handle pausing at grid points
-		if grid_pause_timer > 0:
-			grid_pause_timer -= ship.get_process_delta_time()
-			# Idle at current position
-			ship.set_meta("ai_thrust_input", 0.0)
-			ship.set_meta("ai_turn_input", 0.0)
-			ship.set_meta("ai_fire_input", false)
-			return BehaviorTreeClass.Status.RUNNING
-		
-		# Patrol the grid systematically
-		patrol_grid_systematically()
-		return BehaviorTreeClass.Status.RUNNING
-	
-	func setup_military_patrol_grid():
-		# Create systematic grid patrol pattern
-		var center = Vector2.ZERO  # System center is always at origin
-		var grid_spacing = 400.0
-		
-		# 3x3 grid pattern
-		for x in range(-1, 2):
-			for y in range(-1, 2):
-				var point = center + Vector2(x * grid_spacing, y * grid_spacing)
-				# Add some randomness to make it less robotic
-				point += Vector2(randf_range(-50, 50), randf_range(-50, 50))
-				patrol_grid.append(point)
-	
-	func patrol_grid_systematically():
-		if not tree:
-			return
-			
-		var ship = tree.owner_ship
-		
-		if patrol_grid.is_empty():
-			return
-		
-		var current_target = patrol_grid[current_grid_index]
-		var distance = ship.global_position.distance_to(current_target)
-		
-		# Reached patrol point
-		if distance <= 100.0:
-			current_grid_index = (current_grid_index + 1) % patrol_grid.size()
-			grid_pause_timer = randf_range(2.0, 4.0)  # Pause to "scan" area
-			return
-		
-		# Fly toward current patrol point with military precision
-		var direction = (current_target - ship.global_position).normalized()
-		var target_angle = direction.angle() + PI/2
-		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
-		
-		var turn_input = 0.0
-		if abs(angle_diff) > 0.05:  # More precise turning
-			turn_input = sign(angle_diff) * 0.8
-		
-		ship.set_meta("ai_thrust_input", 0.6)  # Steady military pace
-		ship.set_meta("ai_turn_input", turn_input)
-		ship.set_meta("ai_fire_input", false)
-
-# Default peaceful behavior
 class DefaultPeacefulBehavior extends BehaviorNodeClass:
-	var drift_timer: float = 0.0
-	var direction_change_time: float = 0.0
-	var current_drift_direction: Vector2 = Vector2.ZERO
+	var cruise_target: Vector2 = Vector2.ZERO
+	var cruise_timer: float = 0.0
+	var direction_change_interval: float = 25.0
 	
 	func _init():
 		node_type = BehaviorTreeClass.NodeType.ACTION
@@ -755,24 +974,62 @@ class DefaultPeacefulBehavior extends BehaviorNodeClass:
 			return BehaviorTreeClass.Status.FAILURE
 		
 		var ship = tree.owner_ship
-		drift_timer += ship.get_process_delta_time()
+		cruise_timer += ship.get_process_delta_time()
 		
 		# Change direction periodically
-		if drift_timer >= direction_change_time:
-			current_drift_direction = Vector2.from_angle(randf() * TAU)
-			direction_change_time = randf_range(8.0, 15.0)
-			drift_timer = 0.0
+		if cruise_timer >= direction_change_interval or cruise_target == Vector2.ZERO:
+			choose_new_cruise_direction()
+			cruise_timer = 0.0
 		
-		# Gentle drifting movement
-		var target_angle = current_drift_direction.angle() + PI/2
+		# Cruise toward target
+		gentle_cruise_toward_target()
+		
+		return BehaviorTreeClass.Status.RUNNING
+	
+	func choose_new_cruise_direction():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		
+		# Choose a direction that keeps us in the general system area
+		var current_distance = ship.global_position.length()
+		
+		if current_distance > 1800.0:
+			# Too far out, head back toward system center
+			var direction_to_center = -ship.global_position.normalized()
+			var angle_variation = randf_range(-1.0, 1.0)
+			var target_direction = direction_to_center.rotated(angle_variation)
+			cruise_target = ship.global_position + target_direction * 1000.0
+		else:
+			# Normal cruise
+			var cruise_angle = randf() * TAU
+			var cruise_distance = randf_range(800.0, 1200.0)
+			cruise_target = ship.global_position + Vector2.from_angle(cruise_angle) * cruise_distance
+		
+		direction_change_interval = randf_range(20.0, 35.0)
+	
+	func gentle_cruise_toward_target():
+		if not tree:
+			return
+		
+		var ship = tree.owner_ship
+		var direction = (cruise_target - ship.global_position).normalized()
+		var distance = ship.global_position.distance_to(cruise_target)
+		
+		var target_angle = direction.angle() + PI/2
 		var angle_diff = Phase1CombatAI.angle_difference_static(ship.rotation, target_angle)
 		
+		# Very gentle movement
 		var turn_input = 0.0
 		if abs(angle_diff) > 0.2:
 			turn_input = sign(angle_diff) * 0.3
 		
-		ship.set_meta("ai_thrust_input", 0.25)
+		var thrust_input = 0.2
+		if distance < 200.0:
+			thrust_input *= (distance / 200.0)
+			thrust_input = max(thrust_input, 0.05)
+		
+		ship.set_meta("ai_thrust_input", thrust_input)
 		ship.set_meta("ai_turn_input", turn_input)
 		ship.set_meta("ai_fire_input", false)
-		
-		return BehaviorTreeClass.Status.RUNNING
