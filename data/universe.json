@@ -15,7 +15,7 @@
 	  },
 	  "traffic": {
 		"spawn_frequency": 1.0,
-		"max_npcs": 80,
+		"max_npcs": 40,
 		"spawn_frequency_variance": 3.0,
 		"archetype_weights": {
 		  "trader": 1,

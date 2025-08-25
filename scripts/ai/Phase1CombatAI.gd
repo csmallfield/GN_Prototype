@@ -107,20 +107,20 @@ func setup_behavior_tree():
 # ENHANCED DAMAGE HANDLING - Now integrates with Social Combat System
 # =============================================================================
 
+# =============================================================================
+# FIXED: Phase1CombatAI.notify_attacked_by() method
+# Remove the recursive call to social_combat_system.on_ship_attacked()
+# =============================================================================
+
 func notify_attacked_by(attacker_ship: Node2D):
-	"""Called when ship takes damage - now enhanced with social combat"""
+	"""Called when ship takes damage - FIXED: No recursive social combat call"""
 	print("*** ", owner_ship.name, " ATTACKED BY ", attacker_ship.name, " ***")
 	
-	# NEW: Delegate to social combat system for smart handling
-	if social_combat_system:
-		var damage_amount = 10.0  # We don't have exact damage here, use estimate
-		social_combat_system.on_ship_attacked(attacker_ship, damage_amount)
+	# REMOVED: The recursive call that was causing infinite recursion
+	# The social combat system already processed this attack and is now
+	# telling us about it - we don't need to call it back!
 	
-	# The social combat system will decide whether this is a legitimate threat
-	# and will call set_legitimate_attacker() if needed
-	
-	# For backward compatibility, still set attacker directly for now
-	# (This allows the system to work even if social combat isn't working)
+	# Set attacker and enter combat mode
 	attacker = attacker_ship
 	state = "combat"
 	
@@ -128,6 +128,8 @@ func notify_attacked_by(attacker_ship: Node2D):
 	if behavior_tree:
 		behavior_tree.set_blackboard_value("attacker", attacker_ship)
 		behavior_tree.set_blackboard_value("in_combat", true)
+	
+	print("*** AI entering combat mode against: ", attacker_ship.name, " ***")
 
 func set_legitimate_attacker(attacker_ship: Node2D):
 	"""Called by social combat system when we have a confirmed hostile attacker"""
@@ -150,6 +152,7 @@ func clear_attacker():
 		behavior_tree.set_blackboard_value("in_combat", false)
 	
 	print("*** ", owner_ship.name, " cleared attacker - returning to peaceful mode ***")
+
 
 # =============================================================================
 # BEHAVIOR TREE CREATION (Unchanged from previous version)

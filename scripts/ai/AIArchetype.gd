@@ -59,10 +59,10 @@ static func create_trader() -> AIArchetype:
 	archetype.risk_tolerance = 0.3
 	
 	# NEW: Social combat parameters
-	archetype.help_radius = 800.0
-	archetype.max_help_responders = 3
-	archetype.help_response_chance = 0.8  # Traders help each other
-	archetype.friendly_fire_forgiveness = 0.8  # Generally forgiving
+	archetype.help_radius = 1000.0
+	archetype.max_help_responders = 4
+	archetype.help_response_chance = 0.9  # Traders help each other
+	archetype.friendly_fire_forgiveness = 0.9  # Generally forgiving
 	
 	return archetype
 
@@ -104,8 +104,8 @@ static func create_military() -> AIArchetype:
 	archetype.backup_calling = 0.9
 	
 	# NEW: Social combat parameters
-	archetype.help_radius = 1200.0  # Largest response radius
-	archetype.max_help_responders = 4  # Most organized response
+	archetype.help_radius = 1600.0  # Largest response radius
+	archetype.max_help_responders = 10  # Most organized response
 	archetype.help_response_chance = 0.9  # Disciplined - almost always help
 	archetype.friendly_fire_forgiveness = 0.9  # Military discipline - forgive accidents
 	
