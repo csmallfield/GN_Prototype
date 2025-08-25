@@ -74,14 +74,6 @@ func _ready():
 	print(\"✅ Phase1CombatAI added to: \", name)
 	
 	print(\"NPCShip initialization complete: \", name)
-	# NEW: Get reference to social combat system (created by the enhanced AI)
-	await get_tree().process_frame  # Wait for AI to create the social system
-	social_combat_system = get_node_or_null(\"CombatSocialSystem\")
-	if social_combat_system:
-		print(\"✅ Social combat system found on: \", name)
-	else:
-		print(\"⚠️ WARNING: Social combat system not found on \", name)
-
 
 func _integrate_forces(state):
 	\"\"\"Handle physics with AI input\"\"\"
@@ -118,7 +110,7 @@ func _integrate_forces(state):
 		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
 
 func take_damage(amount: float, attacker: Node2D = null):
-	\"\"\"Take damage and delegate to social combat system for intelligent handling\"\"\"
+	\"\"\"Take damage and notify AI\"\"\"
 	print(\"*** NPC TAKING DAMAGE *** Ship: \", name, \" Amount: \", amount, \" From: \", attacker.name if attacker else \"unknown\")
 	
 	# Apply damage to shields first, then hull
@@ -131,34 +123,22 @@ func take_damage(amount: float, attacker: Node2D = null):
 	
 	print(\"NPC status - Hull: \", hull, \"/\", max_hull, \" Shields: \", shields, \"/\", max_shields)
 	
-	# NEW: Enhanced damage handling with social combat integration
-	if social_combat_system and attacker:
-		# Let the social combat system determine if this is a legitimate threat
-		# It will handle friendly fire detection and mutual aid coordination
-		social_combat_system.on_ship_attacked(attacker, shield_damage + amount)
-		print(\"✅ Delegated attack handling to social combat system\")
+	# CRITICAL: Notify AI that we were attacked
+	var combat_ai = get_node_or_null(\"Phase1CombatAI\")
+	if combat_ai and attacker:
+		combat_ai.notify_attacked_by(attacker)
+		print(\"✅ Notified AI of attack\")
 	else:
-		# Fallback to direct AI notification if social system isn't available
-		var combat_ai = get_node_or_null(\"Phase1CombatAI\")
-		if combat_ai and attacker:
-			combat_ai.notify_attacked_by(attacker)
-			print(\"⚠️ Fallback: Direct AI notification (no social combat system)\")
-		else:
-			print(\"❌ Could not notify AI - combat_ai: \", combat_ai, \" attacker: \", attacker)
+		print(\"❌ Could not notify AI - combat_ai: \", combat_ai, \" attacker: \", attacker)
 	
 	# Check if destroyed
 	if hull <= 0:
 		print(\"*** NPC DESTROYED ***\")
 		destroy()
 
-
 func destroy():
-	\"\"\"Ship destroyed - cleanup\"\"\"
+	\"\"\"Ship destroyed - FIXED: Explosion cleanup\"\"\"
 	print(\"*** NPC DESTROYED ***\")
-	
-	# NEW: Notify social combat system of our destruction so others stop helping us
-	if social_combat_system:
-		social_combat_system.queue_free()  # Clean up help requests, etc.
 	
 	# Create explosion effect
 	var explosion = ColorRect.new()
@@ -196,43 +176,10 @@ func cleanup_and_remove():
 	if traffic_manager and traffic_manager.has_method(\"_on_npc_removed\"):
 		traffic_manager._on_npc_removed(self)
 	queue_free()
-	
-func get_shield_percent() -> float:
-	if max_shields <= 0:
-		return 0
-	return shields / max_shields
-
 
 # Keep for compatibility
 func configure_with_archetype(archetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
 	print(\"NPC configured for Phase 1 combat, faction: \", Government.Faction.keys()[ship_faction])
-	
-# DEBUG AND TESTING METHODS
-# =============================================================================
-
-func debug_get_social_status() -> Dictionary:
-	\"\"\"Get current social combat status for debugging\"\"\"
-	if social_combat_system:
-		return social_combat_system.get_debug_status()
-	return {\"error\": \"no_social_system\"}
-
-func debug_enable_social_combat_debug(enabled: bool = true):
-	\"\"\"Enable debug output for social combat system\"\"\"
-	if social_combat_system:
-		social_combat_system.enable_debug(enabled)
-
-func debug_is_friendly_with(other_ship: Node2D) -> bool:
-	\"\"\"Check if this ship considers another ship friendly (for debugging)\"\"\"
-	if social_combat_system:
-		return social_combat_system.is_friendly_ship(other_ship)
-	return false
-
-func debug_get_archetype_name() -> String:
-	\"\"\"Get the archetype name for debugging\"\"\"
-	var ai = get_node_or_null(\"Phase1CombatAI\")
-	if ai and ai.archetype:
-		return ai.archetype.archetype_name
-	return \"unknown\"
 "
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fi5k5"]

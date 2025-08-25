@@ -126,7 +126,7 @@ func assign_archetype_to_npc(npc_ship):
 	# Choose archetype based on current system's weights
 	var chosen_archetype = choose_archetype_for_system()
 	
-	# Load the AIArchetype class
+	# Load the AIArchetype class (use the enhanced version)
 	const AIArchetypeClass = preload("res://scripts/ai/AIArchetype.gd")
 	
 	# Assign the archetype
@@ -141,15 +141,24 @@ func assign_archetype_to_npc(npc_ship):
 		_:
 			archetype = AIArchetypeClass.create_trader()
 	
-	# Apply to AI
+	# NEW: Set archetype directly on AI (the enhanced AI will handle social combat setup)
 	ai_component.archetype = archetype
-	ai_component.setup_behavior_tree()  # Recreate behavior tree with new archetype
+	
+	# NEW: Let AI recreate its behavior tree with the new archetype
+	if ai_component.has_method("setup_behavior_tree"):
+		ai_component.setup_behavior_tree()
 	
 	# Visual distinction (optional)
 	apply_visual_archetype_hints(npc_ship, chosen_archetype)
 	
+	# NEW: Enable debug for testing (remove this later)
+	if OS.is_debug_build():
+		await get_tree().process_frame  # Wait for social system to be created
+		if npc_ship.has_method("debug_enable_social_combat_debug"):
+			npc_ship.debug_enable_social_combat_debug(true)
+	
 	if debug_mode:
-		print("✅ Assigned ", chosen_archetype, " archetype to ", npc_ship.name)
+		print("✅ Assigned ", chosen_archetype, " archetype to ", npc_ship.name, " with social combat")
 
 func choose_archetype_for_system() -> String:
 	"""Choose archetype based on current system's loaded weights"""

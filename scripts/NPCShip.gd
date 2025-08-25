@@ -1,13 +1,12 @@
 # =============================================================================
-# NPC SHIP - Updated for Phase 1 Simple Combat
+# NPC SHIP - Enhanced for Phase 2 Social Combat (Scene Script)
 # =============================================================================
 extends RigidBody2D
-#class_name NPCShip
 
 # Ship stats
-@export var thrust_power: float = 100.0
-@export var rotation_speed: float = 1.0
-@export var max_velocity: float = 100.0
+@export var thrust_power: float = 500.0
+@export var rotation_speed: float = 3.0
+@export var max_velocity: float = 400.0
 
 @onready var sprite = $Sprite2D
 @onready var engine_particles = $EngineParticles
@@ -23,6 +22,9 @@ var combat_ai: Phase1CombatAI
 
 # Weapon reference
 var weapon_hardpoint: WeaponHardpoint
+
+# NEW: Social Combat Integration
+var social_combat_system: CombatSocialSystem
 
 func _ready():
 	add_to_group("npc_ships")
@@ -52,15 +54,19 @@ func _ready():
 	else:
 		print("⚠️ WARNING: No weapon hardpoint found on ", name)
 	
-	# IMPORTANT: Remove any old AI setup and add the new one
-	# Remove this if it exists:
-	# setup_simple_ai()  # REMOVE THIS LINE
-	
-	# Add the new Phase1CombatAI instead:
+	# Add the new Enhanced Phase1CombatAI (which includes social combat)
 	var combat_ai = Phase1CombatAI.new()
 	combat_ai.name = "Phase1CombatAI"
 	add_child(combat_ai)
-	print("✅ Phase1CombatAI added to: ", name)
+	print("✅ Enhanced Phase1CombatAI added to: ", name)
+	
+	# Get reference to social combat system (created by the AI)
+	await get_tree().process_frame  # Wait for AI to create the social system
+	social_combat_system = get_node_or_null("CombatSocialSystem")
+	if social_combat_system:
+		print("✅ Social combat system found on: ", name)
+	else:
+		print("⚠️ WARNING: Social combat system not found on ", name)
 	
 	print("NPCShip initialization complete: ", name)
 
@@ -99,7 +105,7 @@ func _integrate_forces(state):
 		state.linear_velocity = state.linear_velocity.normalized() * max_velocity
 
 func take_damage(amount: float, attacker: Node2D = null):
-	"""Take damage and notify AI"""
+	"""Take damage and delegate to social combat system for intelligent handling"""
 	print("*** NPC TAKING DAMAGE *** Ship: ", name, " Amount: ", amount, " From: ", attacker.name if attacker else "unknown")
 	
 	# Apply damage to shields first, then hull
@@ -112,13 +118,20 @@ func take_damage(amount: float, attacker: Node2D = null):
 	
 	print("NPC status - Hull: ", hull, "/", max_hull, " Shields: ", shields, "/", max_shields)
 	
-	# CRITICAL: Notify AI that we were attacked
-	var combat_ai = get_node_or_null("Phase1CombatAI")
-	if combat_ai and attacker:
-		combat_ai.notify_attacked_by(attacker)
-		print("✅ Notified AI of attack")
+	# NEW: Enhanced damage handling with social combat integration
+	if social_combat_system and attacker:
+		# Let the social combat system determine if this is a legitimate threat
+		# It will handle friendly fire detection and mutual aid coordination
+		social_combat_system.on_ship_attacked(attacker, shield_damage + amount)
+		print("✅ Delegated attack handling to social combat system")
 	else:
-		print("❌ Could not notify AI - combat_ai: ", combat_ai, " attacker: ", attacker)
+		# Fallback to direct AI notification if social system isn't available
+		var combat_ai_node = get_node_or_null("Phase1CombatAI")
+		if combat_ai_node and attacker:
+			combat_ai_node.notify_attacked_by(attacker)
+			print("⚠️ Fallback: Direct AI notification (no social combat system)")
+		else:
+			print("❌ Could not notify AI - combat_ai: ", combat_ai_node, " attacker: ", attacker)
 	
 	# Check if destroyed
 	if hull <= 0:
@@ -126,8 +139,12 @@ func take_damage(amount: float, attacker: Node2D = null):
 		destroy()
 
 func destroy():
-	"""Ship destroyed - FIXED: Explosion cleanup"""
+	"""Ship destroyed - cleanup"""
 	print("*** NPC DESTROYED ***")
+	
+	# NEW: Notify social combat system of our destruction so others stop helping us
+	if social_combat_system:
+		social_combat_system.queue_free()  # Clean up help requests, etc.
 	
 	# Create explosion effect
 	var explosion = ColorRect.new()
@@ -136,7 +153,7 @@ func destroy():
 	explosion.color = Color.ORANGE
 	get_tree().current_scene.add_child(explosion)
 	
-	# FIXED: Use a simple timer instead of tween
+	# Use a simple timer instead of tween
 	var timer = Timer.new()
 	timer.wait_time = 0.5
 	timer.one_shot = true
@@ -154,6 +171,11 @@ func get_hull_percent() -> float:
 		return 0
 	return hull / max_hull
 
+func get_shield_percent() -> float:
+	if max_shields <= 0:
+		return 0
+	return shields / max_shields
+
 func apply_hue_shift(hue_shift: float):
 	if sprite and sprite.texture:
 		var hue_color = Color.from_hsv(hue_shift / 360.0, 0.6, 1.0)
@@ -166,6 +188,45 @@ func cleanup_and_remove():
 		traffic_manager._on_npc_removed(self)
 	queue_free()
 
-# Keep for compatibility
+# Keep for compatibility with TrafficManager
 func configure_with_archetype(archetype, ship_faction: Government.Faction = Government.Faction.INDEPENDENT):
-	print("NPC configured for Phase 1 combat, faction: ", Government.Faction.keys()[ship_faction])
+	print("NPC configured for Phase 2 social combat, faction: ", Government.Faction.keys()[ship_faction])
+	
+	# Wait for AI to be ready, then set the archetype
+	await get_tree().process_frame
+	var ai = get_node_or_null("Phase1CombatAI")
+	if ai:
+		ai.archetype = archetype
+		print("✅ Archetype set to: ", archetype.archetype_name)
+		
+		# Enable debug mode for testing (can be removed later)
+		if social_combat_system and OS.is_debug_build():
+			social_combat_system.enable_debug(true)
+
+# =============================================================================
+# DEBUG AND TESTING METHODS
+# =============================================================================
+
+func debug_get_social_status() -> Dictionary:
+	"""Get current social combat status for debugging"""
+	if social_combat_system:
+		return social_combat_system.get_debug_status()
+	return {"error": "no_social_system"}
+
+func debug_enable_social_combat_debug(enabled: bool = true):
+	"""Enable debug output for social combat system"""
+	if social_combat_system:
+		social_combat_system.enable_debug(enabled)
+
+func debug_is_friendly_with(other_ship: Node2D) -> bool:
+	"""Check if this ship considers another ship friendly (for debugging)"""
+	if social_combat_system:
+		return social_combat_system.is_friendly_ship(other_ship)
+	return false
+
+func debug_get_archetype_name() -> String:
+	"""Get the archetype name for debugging"""
+	var ai = get_node_or_null("Phase1CombatAI")
+	if ai and ai.archetype:
+		return ai.archetype.archetype_name
+	return "unknown"
