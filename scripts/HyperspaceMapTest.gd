@@ -1,5 +1,6 @@
 # =============================================================================
-# HYPERSPACE MAP TEST - Visual test for Gephi CSV data
+# HYPERSPACE MAP TEST - Visual test for Gephi CSV data - FIXED VERSION
+# Y-axis flipped to match Gephi, Hubs now show as circles
 # =============================================================================
 extends Control
 
@@ -123,7 +124,7 @@ func load_hyperspace_data():
 	print("✅ Data loaded successfully")
 
 func setup_initial_view():
-	"""Set up the initial view to show all nodes"""
+	"""Set up the initial view to show all nodes - FIXED: Account for Y-flip"""
 	if nodes_data.is_empty():
 		return
 	
@@ -140,7 +141,8 @@ func setup_initial_view():
 	
 	# Center the map in the viewport
 	var viewport_center = size / 2
-	var map_center = Vector2(bounds.min_x + bounds.width/2, bounds.min_y + bounds.height/2)
+	# FIXED: Account for Y-flip in center calculation
+	var map_center = Vector2(bounds.min_x + bounds.width/2, -(bounds.min_y + bounds.height/2))
 	
 	# Calculate zoom to fit
 	var zoom_x = (size.x - 200) / display_area.size.x  # Leave room for UI
@@ -218,12 +220,16 @@ func reset_view():
 	setup_initial_view()
 
 func screen_to_world(screen_pos: Vector2) -> Vector2:
-	"""Convert screen coordinates to world coordinates"""
-	return (screen_pos - pan_offset) / zoom_level
+	"""Convert screen coordinates to world coordinates - FIXED: Y-axis flip"""
+	var world_pos = (screen_pos - pan_offset) / zoom_level
+	# Flip the Y coordinate back when converting to world space
+	return Vector2(world_pos.x, -world_pos.y)
 
 func world_to_screen(world_pos: Vector2) -> Vector2:
-	"""Convert world coordinates to screen coordinates"""
-	return world_pos * zoom_level + pan_offset
+	"""Convert world coordinates to screen coordinates - FIXED: Y-axis flip"""
+	# Flip the Y coordinate to match Gephi's coordinate system
+	var flipped_world_pos = Vector2(world_pos.x, -world_pos.y)
+	return flipped_world_pos * zoom_level + pan_offset
 
 func _draw():
 	"""Draw the hyperspace map"""
@@ -277,7 +283,7 @@ func draw_edges():
 		draw_line(screen_source, screen_target, color, width)
 
 func draw_nodes():
-	"""Draw all nodes"""
+	"""Draw all nodes - FIXED: Hubs now use circles"""
 	for node in nodes_data:
 		var world_pos = Vector2(node.get("X", 0), node.get("Y", 0))
 		var screen_pos = world_to_screen(world_pos)
@@ -296,17 +302,19 @@ func draw_nodes():
 		var is_hub = node.get("ishub", false)
 		var is_exceptional = node.get("isexceptional", false)
 		
-		# Draw node
+		# FIXED: Draw all nodes as circles (including hubs)
+		draw_circle(screen_pos, radius, color)
+		
+		# Different border styles for hubs vs regular nodes
 		if is_hub:
-			# Draw hubs as squares
-			var rect = Rect2(screen_pos - Vector2(radius, radius), Vector2(radius * 2, radius * 2))
-			draw_rect(rect, color)
-			draw_rect(rect, Color.WHITE, false, 2.0)
+			# Thicker white border for hubs
+			draw_arc(screen_pos, radius + 1, 0, TAU, 64, Color.WHITE, 3.0)
+		elif is_exceptional:
+			# Thin white border for exceptional nodes
+			draw_arc(screen_pos, radius + 2, 0, TAU, 32, Color.WHITE, 2.0)
 		else:
-			# Draw regular nodes as circles
-			draw_circle(screen_pos, radius, color)
-			if is_exceptional:
-				draw_arc(screen_pos, radius + 2, 0, TAU, 32, Color.WHITE, 2.0)
+			# Very thin border for regular nodes
+			draw_arc(screen_pos, radius + 1, 0, TAU, 32, Color.GRAY, 1.0)
 
 func draw_node_labels():
 	"""Draw node labels if enabled"""
