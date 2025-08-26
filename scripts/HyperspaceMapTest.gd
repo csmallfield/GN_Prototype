@@ -1,6 +1,6 @@
 # =============================================================================
 # HYPERSPACE MAP TEST - Visual test for Gephi CSV data - FIXED VERSION
-# Y-axis flipped to match Gephi, Hubs now show as circles
+# Y-axis flipped to match Gephi, Hubs now show as circles, WITH NODE TOOLTIP
 # =============================================================================
 extends Control
 
@@ -35,6 +35,11 @@ var info_label: Label
 var zoom_label: Label
 var controls_label: Label
 
+# NEW: Node tooltip functionality
+var tooltip_label: Label = null
+var current_tooltip_node: Dictionary = {}
+var tooltip_visible: bool = false
+
 func _ready():
 	print("=== HYPERSPACE MAP TEST STARTING ===")
 	
@@ -44,6 +49,9 @@ func _ready():
 	
 	# Create UI elements
 	create_ui_elements()
+	
+	# NEW: Create tooltip
+	create_tooltip()
 	
 	# Load and parse CSV data
 	load_hyperspace_data()
@@ -76,9 +84,12 @@ func create_ui_elements():
 	
 	# Controls help (bottom-left)
 	controls_label = Label.new()
-	controls_label.position = Vector2(10, size.y - 120)
-	controls_label.size = Vector2(300, 110)
-	controls_label.text = "CONTROLS:\nMouse Wheel - Zoom\nMiddle Click + Drag - Pan\nL - Toggle Labels\nR - Reset View\nI - Toggle Info Panel"
+	controls_label.position = Vector2(10, size.y - 160)  # Made more room
+	controls_label.size = Vector2(300, 150)
+	var control_text = "CONTROLS:\nMouse Wheel - Zoom\nMiddle Click + Drag - Pan\nLeft Click - Node Info\nL - Toggle Labels\nR - Reset View\nI - Toggle Info Panel"
+	if OS.is_debug_build():
+		control_text += "\nT - Debug Tooltip\nN - Count Nodes\nD - Full Debug"
+	controls_label.text = control_text
 	controls_label.add_theme_color_override("font_color", Color.LIGHT_GRAY)
 	controls_label.add_theme_color_override("font_shadow_color", Color.BLACK)
 	controls_label.add_theme_constant_override("shadow_outline_size", 1)
@@ -87,12 +98,116 @@ func create_ui_elements():
 	# Connect resize signal
 	resized.connect(_on_resized)
 
+func create_tooltip():
+	"""Create the node tooltip label"""
+	tooltip_label = Label.new()
+	tooltip_label.visible = false
+	tooltip_label.z_index = 100  # Make sure it's on top
+	
+	# Style the tooltip
+	tooltip_label.add_theme_color_override("font_color", Color.WHITE)
+	tooltip_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	tooltip_label.add_theme_constant_override("shadow_outline_size", 1)
+	
+	# Add background using StyleBoxFlat
+	var style_box = StyleBoxFlat.new()
+	style_box.bg_color = Color(0.1, 0.1, 0.1, 0.9)  # Dark semi-transparent background
+	style_box.border_width_left = 2
+	style_box.border_width_right = 2
+	style_box.border_width_top = 2
+	style_box.border_width_bottom = 2
+	style_box.border_color = Color.CYAN
+	style_box.corner_radius_top_left = 4
+	style_box.corner_radius_top_right = 4
+	style_box.corner_radius_bottom_left = 4
+	style_box.corner_radius_bottom_right = 4
+	
+	tooltip_label.add_theme_stylebox_override("normal", style_box)
+	
+	# Set font size
+	tooltip_label.add_theme_font_size_override("font_size", 12)
+	
+	add_child(tooltip_label)
+	print("Tooltip created")
+
+func show_node_tooltip(node_data: Dictionary, screen_position: Vector2):
+	"""Show tooltip with node information at specified position"""
+	if node_data.is_empty():
+		hide_node_tooltip()
+		return
+	
+	current_tooltip_node = node_data
+	tooltip_visible = true
+	
+	# Build tooltip text from node data (renamed to avoid shadowing)
+	var node_info_text = "NODE ATTRIBUTES:\n"
+	
+	# Sort keys for consistent display
+	var keys = node_data.keys()
+	keys.sort()
+	
+	for key in keys:
+		var value = node_data[key]
+		# Format the value nicely
+		var value_str = str(value)
+		if value is float:
+			# Round floats to 2 decimal places for cleaner display
+			value_str = "%.2f" % value
+		
+		node_info_text += "%s: %s\n" % [key, value_str]
+	
+	tooltip_label.text = node_info_text
+	
+	# Position tooltip so its top-left corner is at the node center
+	tooltip_label.position = screen_position
+	tooltip_label.size = Vector2.ZERO  # Let it auto-size to content
+	
+	# Make sure tooltip stays within screen bounds
+	await get_tree().process_frame  # Wait for size to update
+	
+	# Adjust position if tooltip would go off screen
+	var tooltip_size = tooltip_label.get_theme_default_font().get_multiline_string_size(
+		node_info_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12
+	)
+	
+	# Add some padding to the calculated size
+	tooltip_size += Vector2(16, 16)
+	
+	# Keep tooltip within screen bounds
+	if tooltip_label.position.x + tooltip_size.x > size.x:
+		tooltip_label.position.x = size.x - tooltip_size.x
+	if tooltip_label.position.y + tooltip_size.y > size.y:
+		tooltip_label.position.y = size.y - tooltip_size.y
+	
+	# Make sure it doesn't go off the top-left
+	tooltip_label.position.x = max(0, tooltip_label.position.x)
+	tooltip_label.position.y = max(0, tooltip_label.position.y)
+	
+	tooltip_label.visible = true
+	# Force redraw to show highlighting
+	queue_redraw()
+	# Update info panel
+	update_ui()
+	print("Tooltip shown for node: ", node_data.get("Label", "Unknown"))
+
+func hide_node_tooltip():
+	"""Hide the node tooltip"""
+	if tooltip_label:
+		tooltip_label.visible = false
+	tooltip_visible = false
+	current_tooltip_node.clear()
+	# Force redraw to remove highlighting
+	queue_redraw()
+	# Update info panel
+	update_ui()
+	print("Tooltip hidden")
+
 func _on_resized():
 	"""Handle window resize"""
 	if zoom_label:
 		zoom_label.position.x = size.x - 150
 	if controls_label:
-		controls_label.position.y = size.y - 120
+		controls_label.position.y = size.y - 160
 
 func load_hyperspace_data():
 	"""Load the CSV data"""
@@ -165,7 +280,7 @@ func _input(event):
 		handle_key_input(event)
 
 func handle_mouse_button(event: InputEventMouseButton):
-	"""Handle mouse button events"""
+	"""Handle mouse button events - ENHANCED with node clicking"""
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 		zoom_at_point(event.position, 1.1)
 	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -173,6 +288,26 @@ func handle_mouse_button(event: InputEventMouseButton):
 	elif event.button_index == MOUSE_BUTTON_MIDDLE:
 		is_panning = event.pressed
 		last_pan_position = event.position
+	elif event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		# NEW: Handle left click for node tooltips
+		handle_left_click(event.position)
+
+func handle_left_click(click_position: Vector2):
+	"""Handle left mouse click - show node tooltip or hide if clicking empty space"""
+	# Check if we clicked on a node
+	var clicked_node = get_node_at_position(click_position)
+	
+	if not clicked_node.is_empty():
+		# We clicked on a node - show its tooltip
+		# Convert the world position back to screen coordinates for tooltip positioning
+		var node_world_pos = Vector2(clicked_node.get("X", 0), clicked_node.get("Y", 0))
+		var node_screen_pos = world_to_screen(node_world_pos)
+		
+		show_node_tooltip(clicked_node, node_screen_pos)
+	else:
+		# We clicked on empty space - hide tooltip if visible
+		if tooltip_visible:
+			hide_node_tooltip()
 
 func handle_mouse_motion(event: InputEventMouseMotion):
 	"""Handle mouse motion for panning"""
@@ -188,16 +323,35 @@ func handle_key_input(event: InputEventKey):
 		match event.keycode:
 			KEY_L:
 				show_labels = !show_labels
+				print("Labels toggled: ", show_labels)
 				queue_redraw()
 			KEY_R:
+				print("Resetting view...")
 				reset_view()
 			KEY_I:
 				show_info_panel = !show_info_panel
 				info_label.visible = show_info_panel
+				print("Info panel toggled: ", show_info_panel)
 			KEY_EQUAL, KEY_KP_ADD:
 				zoom_at_point(size / 2, 1.2)
 			KEY_MINUS, KEY_KP_SUBTRACT:
 				zoom_at_point(size / 2, 0.8)
+			KEY_ESCAPE:
+				# ESC key also hides tooltip
+				if tooltip_visible:
+					hide_node_tooltip()
+			KEY_T:
+				# Debug key - print tooltip status
+				if OS.is_debug_build():
+					print("=== TOOLTIP DEBUG ===")
+					print("Tooltip visible: ", tooltip_visible)
+					print("Current tooltip node: ", current_tooltip_node)
+					print("Total nodes: ", nodes_data.size())
+					print("====================")
+			KEY_N:
+				# Debug key - count visible nodes
+				if OS.is_debug_build():
+					count_visible_nodes()
 
 func zoom_at_point(screen_point: Vector2, zoom_factor: float):
 	"""Zoom in/out at a specific screen point"""
@@ -217,6 +371,8 @@ func zoom_at_point(screen_point: Vector2, zoom_factor: float):
 
 func reset_view():
 	"""Reset view to show all nodes"""
+	print("Resetting view to show all nodes...")
+	hide_node_tooltip()  # Clear any active tooltip
 	setup_initial_view()
 
 func screen_to_world(screen_pos: Vector2) -> Vector2:
@@ -283,38 +439,70 @@ func draw_edges():
 		draw_line(screen_source, screen_target, color, width)
 
 func draw_nodes():
-	"""Draw all nodes - FIXED: Hubs now use circles"""
-	for node in nodes_data:
-		var world_pos = Vector2(node.get("X", 0), node.get("Y", 0))
+	"""Draw all nodes - FIXED: Hubs now use circles, robust node rendering"""
+	# Get selected node ID once for efficiency
+	var selected_node_id = null
+	if not current_tooltip_node.is_empty():
+		selected_node_id = current_tooltip_node.get("Id", null)
+	
+	for node_index in range(nodes_data.size()):
+		var node = nodes_data[node_index]
+		
+		# Get world position
+		var world_x = node.get("X", 0.0)
+		var world_y = node.get("Y", 0.0)
+		var world_pos = Vector2(world_x, world_y)
 		var screen_pos = world_to_screen(world_pos)
 		
-		# Skip nodes that are far off screen
-		if not is_point_on_screen(screen_pos, 50):
+		# Calculate base radius first to use for culling
+		var size_multiplier = float(node.get("Size", node_base_size)) / node_base_size
+		var base_radius = node_base_size * size_multiplier * max(0.3, zoom_level)
+		base_radius = max(2.0, base_radius)  # Minimum visible size
+		
+		# Check if selected
+		var is_selected = false
+		var node_id = node.get("Id", null)
+		if selected_node_id != null and node_id != null:
+			is_selected = (node_id == selected_node_id)
+		
+		# FIXED: Use consistent culling margin to prevent nodes from disappearing
+		# when tooltip is hidden
+		var culling_margin = 100.0  # Always use larger margin
+		
+		# Skip nodes that are far off screen (with appropriate margin)
+		if not is_point_on_screen(screen_pos, culling_margin):
 			continue
 		
-		# Get node properties
-		var color = data_parser.get_node_color(node)
-		var size_multiplier = node.get("Size", node_base_size) / node_base_size
-		var radius = node_base_size * size_multiplier * max(0.3, zoom_level)
-		radius = max(2.0, radius)  # Minimum visible size
-		
-		# Special visual indicators
+		# Get node visual properties
+		var base_color = data_parser.get_node_color(node)
 		var is_hub = node.get("ishub", false)
 		var is_exceptional = node.get("isexceptional", false)
 		
-		# FIXED: Draw all nodes as circles (including hubs)
-		draw_circle(screen_pos, radius, color)
+		# Calculate final visual properties
+		var final_color = base_color
+		var final_radius = base_radius
 		
-		# Different border styles for hubs vs regular nodes
+		# Apply selection highlighting
+		if is_selected:
+			final_color = Color.WHITE
+			final_radius = base_radius * 1.3
+		
+		# Draw the node circle
+		draw_circle(screen_pos, final_radius, final_color)
+		
+		# Draw borders based on node type
+		var border_color = Color.GRAY
+		var border_width = 1.0
+		
 		if is_hub:
-			# Thicker white border for hubs
-			draw_arc(screen_pos, radius + 1, 0, TAU, 64, Color.WHITE, 3.0)
+			border_color = Color.WHITE
+			border_width = 3.0
 		elif is_exceptional:
-			# Thin white border for exceptional nodes
-			draw_arc(screen_pos, radius + 2, 0, TAU, 32, Color.WHITE, 2.0)
-		else:
-			# Very thin border for regular nodes
-			draw_arc(screen_pos, radius + 1, 0, TAU, 32, Color.GRAY, 1.0)
+			border_color = Color.WHITE
+			border_width = 2.0
+		
+		# Draw border
+		draw_arc(screen_pos, final_radius + 1, 0, TAU, 32, border_color, border_width)
 
 func draw_node_labels():
 	"""Draw node labels if enabled"""
@@ -366,13 +554,18 @@ func update_ui():
 	info_text += "Zoom: %.2fx\n" % zoom_level
 	info_text += "Pan: (%.0f, %.0f)" % [pan_offset.x, pan_offset.y]
 	
+	if tooltip_visible and not current_tooltip_node.is_empty():
+		var node_label = current_tooltip_node.get("Label", "Unknown")
+		var node_id = current_tooltip_node.get("Id", "?")
+		info_text += "\nSelected: %s (ID: %s)" % [node_label, node_id]
+	
 	info_label.text = info_text
 	
 	if zoom_label:
 		zoom_label.text = "Zoom: %.2fx" % zoom_level
 
 func get_node_at_position(screen_pos: Vector2) -> Dictionary:
-	"""Get the node at a given screen position (for future mouse interactions)"""
+	"""Get the node at a given screen position (for mouse interactions) - ENHANCED"""
 	var world_pos = screen_to_world(screen_pos)
 	var min_distance = INF
 	var closest_node = {}
@@ -385,14 +578,43 @@ func get_node_at_position(screen_pos: Vector2) -> Dictionary:
 			min_distance = distance
 			closest_node = node
 	
-	# Return closest node if it's within reasonable distance
+	# Return closest node if it's within reasonable distance (considering zoom level)
 	var size_multiplier = closest_node.get("Size", node_base_size) / node_base_size
-	var threshold = (node_base_size * size_multiplier + 10) / zoom_level
+	var threshold = (node_base_size * size_multiplier + 15) / zoom_level  # Slightly larger click area
 	
 	if min_distance <= threshold:
 		return closest_node
 	
 	return {}
+
+func count_visible_nodes():
+	"""Debug function to count how many nodes are being rendered"""
+	var visible_count = 0
+	var total_count = nodes_data.size()
+	var selected_node_id = null
+	
+	if not current_tooltip_node.is_empty():
+		selected_node_id = current_tooltip_node.get("Id", null)
+	
+	for node in nodes_data:
+		var world_pos = Vector2(node.get("X", 0.0), node.get("Y", 0.0))
+		var screen_pos = world_to_screen(world_pos)
+		
+		# Use same culling margin as draw_nodes()
+		var culling_margin = 100.0  # Consistent with drawing
+		
+		if is_point_on_screen(screen_pos, culling_margin):
+			visible_count += 1
+	
+	print("=== NODE VISIBILITY DEBUG ===")
+	print("Total nodes: ", total_count)
+	print("Visible nodes: ", visible_count)
+	print("Hidden nodes: ", total_count - visible_count)
+	print("Selected node ID: ", selected_node_id)
+	print("Culling margin: 100.0 (consistent)")
+	print("Zoom level: ", zoom_level)
+	print("Pan offset: ", pan_offset)
+	print("==============================")
 
 # Debug method
 func _unhandled_key_input(event):
@@ -402,5 +624,9 @@ func _unhandled_key_input(event):
 		print("=== DEBUG INFO ===")
 		print("Zoom: ", zoom_level)
 		print("Pan: ", pan_offset)
+		print("Tooltip visible: ", tooltip_visible)
+		if not current_tooltip_node.is_empty():
+			print("Current tooltip node: ", current_tooltip_node.get("Label", "Unknown"))
 		if data_parser:
 			data_parser.print_sample_data()
+		count_visible_nodes()

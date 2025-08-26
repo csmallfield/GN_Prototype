@@ -1,5 +1,5 @@
 # =============================================================================
-# HYPERSPACE DATA PARSER - Loads and parses Gephi CSV exports
+# HYPERSPACE DATA PARSER - Loads and parses Gephi CSV exports - FIXED VERSION
 # =============================================================================
 extends RefCounted
 class_name HyperspaceDataParser
@@ -111,15 +111,15 @@ func parse_csv_line(line: String) -> Array[String]:
 	var i = 0
 	
 	while i < line.length():
-		var char = line[i]
+		var current_char = line[i]  # FIXED: renamed from 'char' to 'current_char'
 		
-		if char == '"' and (i == 0 or line[i-1] != '\\'):
+		if current_char == '"' and (i == 0 or line[i-1] != '\\'):
 			in_quotes = !in_quotes
-		elif char == ',' and not in_quotes:
+		elif current_char == ',' and not in_quotes:
 			values.append(current_value.strip_edges())
 			current_value = ""
 		else:
-			current_value += char
+			current_value += current_char
 		
 		i += 1
 	
@@ -157,12 +157,16 @@ func convert_node_value(value: String, header: String):
 			return value
 
 func convert_edge_value(value: String, header: String):
-	"""Convert edge-specific values"""
+	"""Convert edge-specific values - FIXED: Proper type handling"""
 	match header:
 		"Source", "Target", "Id", "Weight", "piracyrisk":
 			return value.to_int()
 		"Label":
-			return value.to_float() if value.is_valid_float() else value
+			# FIXED: Handle the ternary operator type issue
+			if value.is_valid_float():
+				return value.to_float()
+			else:
+				return value
 		_:
 			return value
 
