@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://7jb85qka3023"
+
+[deps]
+
+files=["res://data/hyperspace/universeExport_edges.Target.translation", "res://data/hyperspace/universeExport_edges.Type.translation", "res://data/hyperspace/universeExport_edges.Id.translation", "res://data/hyperspace/universeExport_edges.Label.translation", "res://data/hyperspace/universeExport_edges.Weight.translation", "res://data/hyperspace/universeExport_edges.piracyrisk.translation", "res://data/hyperspace/universeExport_edges.travelsafety.translation", "res://data/hyperspace/universeExport_edges.Color.translation"]
+
+source_file="res://data/hyperspace/universeExport_edges.csv"
+dest_files=["res://data/hyperspace/universeExport_edges.Target.translation", "res://data/hyperspace/universeExport_edges.Type.translation", "res://data/hyperspace/universeExport_edges.Id.translation", "res://data/hyperspace/universeExport_edges.Label.translation", "res://data/hyperspace/universeExport_edges.Weight.translation", "res://data/hyperspace/universeExport_edges.piracyrisk.translation", "res://data/hyperspace/universeExport_edges.travelsafety.translation", "res://data/hyperspace/universeExport_edges.Color.translation"]
+
+[params]
+
+compress=true
+delimiter=0

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3xn52peyrkfp"]
+
+[ext_resource type="Script" uid="uid://d3g6dhksoky5f" path="res://scripts/HyperspaceMapTest.gd" id="1_c7lmh"]
+
+[node name="HyperspaceMapTest" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_c7lmh")
