@@ -88,7 +88,7 @@ func create_ui_elements():
 	controls_label.size = Vector2(300, 150)
 	var control_text = "CONTROLS:\nMouse Wheel - Zoom\nMiddle Click + Drag - Pan\nLeft Click - Node Info\nL - Toggle Labels\nR - Reset View\nI - Toggle Info Panel"
 	if OS.is_debug_build():
-		control_text += "\nT - Debug Tooltip\nN - Count Nodes\nD - Full Debug"
+		control_text += "\nT - Debug Tooltip\nN - Count Nodes\nD - Full Debug\nShift+Click - Track Node"
 	controls_label.text = control_text
 	controls_label.add_theme_color_override("font_color", Color.LIGHT_GRAY)
 	controls_label.add_theme_color_override("font_shadow_color", Color.BLACK)
@@ -192,10 +192,25 @@ func show_node_tooltip(node_data: Dictionary, screen_position: Vector2):
 
 func hide_node_tooltip():
 	"""Hide the node tooltip"""
+	print("=== HIDING TOOLTIP DEBUG ===")
+	print("Before hiding - current_tooltip_node: ", current_tooltip_node)
+	print("Before hiding - tooltip_visible: ", tooltip_visible)
+	
 	if tooltip_label:
 		tooltip_label.visible = false
 	tooltip_visible = false
-	current_tooltip_node.clear()
+	
+	# Store the node info before clearing for debugging
+	var was_selected_node = current_tooltip_node.get("Label", "None")
+	var was_selected_id = current_tooltip_node.get("Id", "None")
+	
+	# CHANGED: Try assigning empty dict instead of clearing
+	current_tooltip_node = {}
+	
+	print("After clearing - current_tooltip_node: ", current_tooltip_node)
+	print("Previously selected: ", was_selected_node, " (ID: ", was_selected_id, ")")
+	print("===========================")
+	
 	# Force redraw to remove highlighting
 	queue_redraw()
 	# Update info panel
@@ -445,6 +460,18 @@ func draw_nodes():
 	if not current_tooltip_node.is_empty():
 		selected_node_id = current_tooltip_node.get("Id", null)
 	
+	# Debug: Track if we're looking for a specific node that might disappear
+	var debug_track_node = false
+	var debug_track_id = null
+	if OS.is_debug_build() and Input.is_key_pressed(KEY_SHIFT):
+		debug_track_node = true
+		# Track the first few nodes for debugging
+		if nodes_data.size() > 0:
+			debug_track_id = nodes_data[0].get("Id", null)
+	
+	var drawn_count = 0
+	var culled_count = 0
+	
 	for node_index in range(nodes_data.size()):
 		var node = nodes_data[node_index]
 		
@@ -469,9 +496,23 @@ func draw_nodes():
 		# when tooltip is hidden
 		var culling_margin = 100.0  # Always use larger margin
 		
+		# Debug tracking for specific nodes
+		if debug_track_node and node_id == debug_track_id:
+			print("=== TRACKING NODE ", debug_track_id, " ===")
+			print("World pos: ", world_pos)
+			print("Screen pos: ", screen_pos)
+			print("Culling margin: ", culling_margin)
+			print("Is selected: ", is_selected)
+			print("Screen bounds: ", Vector2.ZERO, " to ", size)
+		
 		# Skip nodes that are far off screen (with appropriate margin)
 		if not is_point_on_screen(screen_pos, culling_margin):
+			culled_count += 1
+			if debug_track_node and node_id == debug_track_id:
+				print("*** NODE CULLED - OFF SCREEN ***")
 			continue
+		
+		drawn_count += 1
 		
 		# Get node visual properties
 		var base_color = data_parser.get_node_color(node)
@@ -503,6 +544,10 @@ func draw_nodes():
 		
 		# Draw border
 		draw_arc(screen_pos, final_radius + 1, 0, TAU, 32, border_color, border_width)
+	
+	# Debug output summary
+	if debug_track_node:
+		print("Draw summary - Drawn: ", drawn_count, " Culled: ", culled_count, " Total: ", nodes_data.size())
 
 func draw_node_labels():
 	"""Draw node labels if enabled"""
