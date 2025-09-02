@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3 uid="uid://ckqawt5f0td3o"]
+[gd_scene load_steps=33 format=3 uid="uid://ckqawt5f0td3o"]
 
 [ext_resource type="Script" uid="uid://ba44yhnqqhxc8" path="res://scripts/PlanetLibraryViewer.gd" id="1_6444o"]
 [ext_resource type="Shader" uid="uid://du62yo5yqkelo" path="res://shaders/PlanetShader_Stage10.gdshader" id="2_17jbo"]
@@ -23,47 +23,47 @@ shader_parameter/light_direction = Vector2(0.3, 0.3)
 shader_parameter/light_intensity = 1.0
 shader_parameter/light_color = Color(1, 0.95, 0.8, 1)
 shader_parameter/shadow_tint = Color(0.5, 0.6, 0.8, 1)
-shader_parameter/shadow_tint_strength = 0.2
-shader_parameter/ambient_light = 0.3
+shader_parameter/shadow_tint_strength = 0.24
+shader_parameter/ambient_light = 0.389
 shader_parameter/ambient_color = Color(0.4, 0.6, 1, 1)
-shader_parameter/rim_light_intensity = 0.25
+shader_parameter/rim_light_intensity = 0.441
 shader_parameter/rim_light_color = Color(0.8, 0.9, 1, 1)
 shader_parameter/rim_light_falloff = 2.0
 shader_parameter/rim_light_crescent_power = 3.0
 shader_parameter/rim_light_crescent_offset = 0.2
-shader_parameter/rim_light_glow_intensity = 1.0
-shader_parameter/rim_light_glow_radius = 0.1
-shader_parameter/rim_light_glow_enabled = false
-shader_parameter/continent_scale = 3.0
-shader_parameter/continent_threshold = 0.5
-shader_parameter/continent_sharpness = 0.25
-shader_parameter/continent_octaves = 3.0
+shader_parameter/rim_light_glow_intensity = 1.36
+shader_parameter/rim_light_glow_radius = 0.104
+shader_parameter/rim_light_glow_enabled = true
+shader_parameter/continent_scale = 3.634
+shader_parameter/continent_threshold = 0.498
+shader_parameter/continent_sharpness = 0.202
+shader_parameter/continent_octaves = 4.112
 shader_parameter/continent_persistence = 0.6
 shader_parameter/ocean_depth = 0.4
 shader_parameter/warp_strength = 0.15
 shader_parameter/warp_scale = 5.0
-shader_parameter/terrain_scale = 5.0
+shader_parameter/terrain_scale = 10.603
 shader_parameter/terrain_strength = 0.75
 shader_parameter/terrain_octaves = 3.0
 shader_parameter/terrain_persistence = 0.5
 shader_parameter/terrain_softness = 0.1
-shader_parameter/detail_scale = 8.0
+shader_parameter/detail_scale = 8.076
 shader_parameter/detail_strength = 0.2
 shader_parameter/detail_octaves = 2.0
 shader_parameter/mountain_threshold = 0.7
-shader_parameter/highland_threshold = 0.4
+shader_parameter/highland_threshold = 0.363
 shader_parameter/cloud_coverage = 0.4
 shader_parameter/cloud_scale = 4.0
 shader_parameter/cloud_stretch_x = 1.0
 shader_parameter/cloud_stretch_y = 1.0
 shader_parameter/cloud_octaves = 3.0
 shader_parameter/cloud_persistence = 0.5
-shader_parameter/cloud_density = 0.8
-shader_parameter/cloud_sharpness = 0.1
+shader_parameter/cloud_density = 0.978
+shader_parameter/cloud_sharpness = 0.106
 shader_parameter/cloud_color = Color(1, 1, 1, 1)
 shader_parameter/cloud_shadow_color = Color(0.7, 0.7, 0.8, 1)
 shader_parameter/cloud_opacity = 0.7
-shader_parameter/cloud_shadow_strength = 0.3
+shader_parameter/cloud_shadow_strength = 0.234
 shader_parameter/cloud_offset_x = 0.0
 shader_parameter/cloud_offset_y = 0.0
 shader_parameter/river_scale = 0.5
@@ -91,9 +91,19 @@ shader_parameter/ice_color = Color(0.9, 0.95, 1, 1)
 shader_parameter/coastal_blend = 0.03
 shader_parameter/beach_color = Color(0.7, 0.6, 0.4, 1)
 shader_parameter/core_color = Color(1, 0.8, 0.3, 1)
-shader_parameter/core_size = 0.5
-shader_parameter/color_variation = 0.2
+shader_parameter/core_size = 1.379
+shader_parameter/color_variation = 0.221
 shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Resource_7bdk8"]
+script = ExtResource("3_6444o")
+parameter_name = "uv_offset_x"
+animation_type = "linear"
+rate = 0.1
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_6444o"]
 shader = ExtResource("2_17jbo")
@@ -395,6 +405,26 @@ shader_parameter/core_size = 0.5
 shader_parameter/color_variation = 0.2
 shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
 
+[sub_resource type="Resource" id="Resource_tysof"]
+script = ExtResource("3_6444o")
+parameter_name = "uv_offset_y"
+animation_type = "linear"
+rate = 0.02
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_gm5lm"]
+script = ExtResource("3_6444o")
+parameter_name = "river_strength"
+animation_type = "cosine"
+rate = 1.0
+amplitude = 0.1
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0ua5g"]
 shader = ExtResource("2_17jbo")
 shader_parameter/planet_radius = 0.45
@@ -426,7 +456,7 @@ shader_parameter/rim_light_glow_radius = 0.1
 shader_parameter/rim_light_glow_enabled = true
 shader_parameter/continent_scale = 3.0
 shader_parameter/continent_threshold = 0.5
-shader_parameter/continent_sharpness = 0.296
+shader_parameter/continent_sharpness = 0.143
 shader_parameter/continent_octaves = 6.278
 shader_parameter/continent_persistence = 0.79
 shader_parameter/ocean_depth = 0.873
@@ -484,6 +514,26 @@ shader_parameter/core_color = Color(0.816537, 0.822823, 0.903058, 1)
 shader_parameter/core_size = 0.5
 shader_parameter/color_variation = 0.2
 shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Resource_22lcg"]
+script = ExtResource("3_6444o")
+parameter_name = "warp_scale"
+animation_type = "linear"
+rate = 2.0
+amplitude = 0.01
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_lgd78"]
+script = ExtResource("3_6444o")
+parameter_name = "warp_strength"
+animation_type = "cosine"
+rate = 0.1
+amplitude = 0.1
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_22lcg"]
 shader = ExtResource("2_17jbo")
@@ -579,7 +629,7 @@ shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
 script = ExtResource("3_6444o")
 parameter_name = "uv_offset_x"
 animation_type = "linear"
-rate = 0.02
+rate = -0.02
 amplitude = 1.0
 offset_x = 0.0
 offset_y = 0.0
@@ -589,7 +639,7 @@ metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 script = ExtResource("3_6444o")
 parameter_name = "cloud_offset_x"
 animation_type = "linear"
-rate = 0.02
+rate = 0.01
 amplitude = 1.0
 offset_x = 0.0
 offset_y = 0.0
@@ -599,7 +649,7 @@ metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 script = ExtResource("3_6444o")
 parameter_name = "cloud_offset_y"
 animation_type = "linear"
-rate = 0.025
+rate = 0.01
 amplitude = 1.0
 offset_x = 0.0
 offset_y = 0.0
@@ -676,14 +726,14 @@ shader_parameter/cloud_opacity = 0.7
 shader_parameter/cloud_shadow_strength = 0.3
 shader_parameter/cloud_offset_x = 0.0
 shader_parameter/cloud_offset_y = 0.0
-shader_parameter/river_scale = 8.527
-shader_parameter/river_strength = 1.72
-shader_parameter/river_width = 0.151
-shader_parameter/river_octaves = 4.325
-shader_parameter/river_persistence = 0.485
+shader_parameter/river_scale = 7.949
+shader_parameter/river_strength = 1.631
+shader_parameter/river_width = 0.168
+shader_parameter/river_octaves = 7.948
+shader_parameter/river_persistence = 0.554
 shader_parameter/river_glow_enabled = true
 shader_parameter/river_glow_intensity = 0.134
-shader_parameter/river_glow_radius = 0.001
+shader_parameter/river_glow_radius = 0.038
 shader_parameter/river_glow_color = Color(0.4, 0.8, 1, 1)
 shader_parameter/ice_cap_size = 0.05
 shader_parameter/ice_cap_softness = 0.05
@@ -709,7 +759,7 @@ shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
 script = ExtResource("3_6444o")
 parameter_name = "uv_offset_x"
 animation_type = "linear"
-rate = -0.15
+rate = -0.015
 amplitude = 1.0
 offset_x = 0.0
 offset_y = 0.0
@@ -719,7 +769,7 @@ metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 script = ExtResource("3_6444o")
 parameter_name = "uv_offset_y"
 animation_type = "linear"
-rate = -0.1
+rate = -0.01
 amplitude = 1.0
 offset_x = 0.0
 offset_y = 0.0
@@ -729,18 +779,8 @@ metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
 script = ExtResource("3_6444o")
 parameter_name = "river_strength"
 animation_type = "sine"
-rate = 6.0
-amplitude = 1.0
-offset_x = 0.0
-offset_y = 0.0
-metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
-
-[sub_resource type="Resource" id="Resource_22lcg"]
-script = ExtResource("3_6444o")
-parameter_name = "sphere_strength"
-animation_type = "sine"
-rate = 7.0
-amplitude = 5.0
+rate = 0.7
+amplitude = 0.2
 offset_x = 0.0
 offset_y = 0.0
 metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
@@ -893,6 +933,11 @@ material = SubResource("ShaderMaterial_17jbo")
 offset_right = 512.0
 offset_bottom = 512.0
 
+[node name="PlanetAnimationSet" type="Node" parent="planet_default"]
+script = ExtResource("2_36wlk")
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_7bdk8")])
+metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
+
 [node name="planet_earth" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_6444o")
 offset_left = 600.0
@@ -921,11 +966,21 @@ offset_left = 1800.0
 offset_right = 2312.0
 offset_bottom = 512.0
 
+[node name="PlanetAnimationSet" type="Node" parent="planet_proxima_b"]
+script = ExtResource("2_36wlk")
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_tysof"), SubResource("Resource_gm5lm")])
+metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
+
 [node name="planet_sirius_major" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_0ua5g")
 offset_top = 600.0
 offset_right = 512.0
 offset_bottom = 1112.0
+
+[node name="PlanetAnimationSet" type="Node" parent="planet_sirius_major"]
+script = ExtResource("2_36wlk")
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_22lcg"), SubResource("Resource_lgd78")])
+metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
 
 [node name="planet_rigel_beta" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_22lcg")
@@ -948,7 +1003,7 @@ offset_bottom = 1112.0
 
 [node name="PlanetAnimationSet" type="Node" parent="planet_new_geneva"]
 script = ExtResource("2_36wlk")
-parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_dja01"), SubResource("Resource_m8lof"), SubResource("Resource_0ua5g"), SubResource("Resource_22lcg")])
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_dja01"), SubResource("Resource_m8lof"), SubResource("Resource_0ua5g")])
 metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
 
 [node name="planet_vega_prime" type="ColorRect" parent="."]

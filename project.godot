@@ -23,7 +23,7 @@ ShipManager="*res://scripts/ShipManager.gd"
 
 [display]
 
-window/size/viewport_width=3440
+window/size/viewport_width=1920
 window/size/viewport_height=1080
 
 [input]
