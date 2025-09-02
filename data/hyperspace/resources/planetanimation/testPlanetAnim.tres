@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PlanetAnimationData" load_steps=2 format=3 uid="uid://vkqmg0py88mo"]
+
+[ext_resource type="Script" uid="uid://ogtcmurr2hor" path="res://scripts/classes/PlanetAnimationData.gd" id="1_lfqkj"]
+
+[resource]
+script = ExtResource("1_lfqkj")
+parameter_name = ""
+animation_type = "linear"
+rate = 1.0
+amplitude = 1.0
+offset = Vector2(0, 0)
+metadata/_custom_type_script = "uid://ogtcmurr2hor"

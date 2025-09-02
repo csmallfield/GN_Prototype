@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="SystemData" load_steps=3 format=3 uid="uid://vg3ow0dl42cc"]
+
+[ext_resource type="Script" uid="uid://1b5lwhd80ya7" path="res://scripts/classes/CelestialBodyData.gd" id="1_f3g2p"]
+[ext_resource type="Script" uid="uid://bvj5cju1soy3x" path="res://scripts/classes/SystemData.gd" id="2_bqgc8"]
+
+[resource]
+script = ExtResource("2_bqgc8")
+system_id = ""
+system_name = "Helios"
+description = "The cradle of Hhuman Civilization"
+flavor_text = "Some flavorful text to taste"
+connections = Array[String]([])
+map_position = Vector2(0.5, 0.5)
+base_color = Vector3(0, 0, 0)
+star_density_multiplier = 1.0
+star_brightness_multiplier = 1.0
+twinkle_speed_override = -1.0
+spawn_frequency = 15.0
+max_npcs = 5
+spawn_frequency_variance = 5.0
+archetype_weights = {
+"military": 0.3,
+"pirate": 0.1,
+"trader": 0.6
+}
+npc_thrust_power = 500.0
+npc_rotation_speed = 3.0
+npc_max_velocity = 400.0
+npc_visit_duration_range = Vector2(3, 8)
+hyperspace_recharge_cost = 200
+celestial_bodies = Array[ExtResource("1_f3g2p")]([])
+metadata/_custom_type_script = "uid://bvj5cju1soy3x"

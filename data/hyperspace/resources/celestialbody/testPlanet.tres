@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CelestialBodyData" load_steps=3 format=3 uid="uid://be7nvclpinxtr"]
+
+[ext_resource type="Script" uid="uid://ogtcmurr2hor" path="res://scripts/classes/PlanetAnimationData.gd" id="1_kscyx"]
+[ext_resource type="Script" uid="uid://1b5lwhd80ya7" path="res://scripts/classes/CelestialBodyData.gd" id="2_8e5o5"]
+
+[resource]
+script = ExtResource("2_8e5o5")
+id = "999"
+name = "Valgard"
+type = "planet"
+description = "This is a test description of a test planet."
+flavor_text = "Many wonderful things happen on the planet of Valgard, but I don't know what any of them are because this is nonsense flavor text just to try it out."
+position = Vector2(0, 0)
+scale = 1.0
+can_land = true
+services_flags = 33
+government = "Empire"
+tech_level = 3
+population = 0
+planet_library_id = "default"
+sprite_path = ""
+animations = Array[ExtResource("1_kscyx")]([])
+shipyard_available_ships = Array[String]([])
+metadata/_custom_type_script = "uid://1b5lwhd80ya7"
