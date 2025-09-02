@@ -46,21 +46,6 @@
 		  "government": "confederation",
 		  "tech_level": 5,
 		  "population": 8000000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.01
-			},
-			"cloud_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.015
-			},
-			"rim_light_intensity": {
-			  "type": "sine", 
-			  "rate": 2.0, 
-			  "amplitude": 0.2
-			}
-		  }
 		},
 		{
 		  "id": "luna",
@@ -89,21 +74,6 @@
 		  "government": "confederation",
 		  "tech_level": 4,
 		  "population": 8000000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.012
-			},
-			"cloud_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.017
-			},
-			"rim_light_intensity": {
-			  "type": "sine", 
-			  "rate": 3.0, 
-			  "amplitude": 0.1
-			}
-		  }
 		},
 		{
 		  "id": "ceres",
@@ -157,26 +127,6 @@
 		  "government": "confederation",
 		  "tech_level": 4,
 		  "population": 8000000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": -0.15
-			},
-			"uv_offset_y": {
-			  "type": "linear", 
-			  "rate": -0.1
-			},
-			"river_strength": {
-			  "type": "sine", 
-			  "rate": 6.0, 
-			  "amplitude": 1
-			},
-			"sphere_strength": {
-			  "type": "sine", 
-			  "rate": 7.0, 
-			  "amplitude": 5
-			}
-		  }
 		},
 		{
 		  "id": "centauri_station",

@@ -1,5 +1,5 @@
 # =============================================================================
-# CELESTIAL BODY - Now with parameter animation support
+# CELESTIAL BODY - Updated to use library animation system
 # =============================================================================
 # CelestialBody.gd
 extends StaticBody2D
@@ -22,12 +22,13 @@ func _ready():
 		label.text = celestial_data.name
 
 func create_procedural_planet():
-	"""Create a procedural planet using the library system"""
+	"""Create a procedural planet using the library system with integrated animations"""
 	var planet_id = celestial_data.get("id", "default")
 	
-	# Get material from the planet library
-	var material = PlanetLibraryLoader.get_planet_material(planet_id)
-	if not material:
+	# Get both material and animation data from the library
+	var planet_data = PlanetLibraryLoader.get_planet_data(planet_id)
+	
+	if not planet_data.material:
 		push_error("Failed to get material for planet: " + planet_id)
 		return
 	
@@ -42,13 +43,13 @@ func create_procedural_planet():
 	procedural_planet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	# Apply the material from the library
-	procedural_planet.material = material
+	procedural_planet.material = planet_data.material
 	
 	# Apply any system-specific modifications
-	apply_system_variations(material)
+	apply_system_variations(planet_data.material)
 	
-	# Setup parameter animations if defined
-	setup_planet_animations(material)
+	# Setup parameter animations from library data
+	setup_planet_animations_from_library(planet_data.material, planet_data.animation_data)
 	
 	# Hide the original sprite and add the procedural planet
 	sprite.visible = false
@@ -58,12 +59,14 @@ func create_procedural_planet():
 	update_collision_shape(planet_size)
 	
 	print("Created procedural planet: ", planet_id)
+	if planet_data.has_animations:
+		print("  • Loaded animations for ", planet_data.animation_data.size(), " parameters")
 
-func setup_planet_animations(material: ShaderMaterial):
-	"""Setup parameter animations if defined in celestial_data"""
-	var animation_data = celestial_data.get("animations", {})
+func setup_planet_animations_from_library(material: ShaderMaterial, animation_data: Dictionary):
+	"""Setup parameter animations from library animation data"""
 	
 	if animation_data.is_empty():
+		print("No animations defined for planet: ", celestial_data.get("id", "unknown"))
 		return  # No animations defined
 	
 	# Create and configure the animator
@@ -71,10 +74,11 @@ func setup_planet_animations(material: ShaderMaterial):
 	planet_animator.name = "PlanetAnimator"
 	add_child(planet_animator)
 	
-	# Setup animations with the material and configuration
+	# Setup animations with the material and configuration from library
 	planet_animator.setup_animations(material, animation_data)
 	
 	print("Setup animations for planet: ", celestial_data.get("id", "unknown"))
+	print("  Animation parameters: ", animation_data.keys())
 
 func apply_system_variations(material: ShaderMaterial):
 	"""Apply minor system-specific variations (lighting, seeds)"""
@@ -107,7 +111,6 @@ func apply_star_lighting(material: ShaderMaterial, system_id: String):
 			material.set_shader_parameter("light_color", Color(0.921, 0.594, 0.674))
 			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
 			material.set_shader_parameter("light_intensity", 1.4)
-			
 			
 		#"sirius_system":
 			# Blue-white star - cool bright light
@@ -183,8 +186,11 @@ func reload_planet_from_library():
 	if procedural_planet and celestial_data.get("type") == "planet":
 		var planet_id = celestial_data.get("id", "default")
 		PlanetLibraryLoader.reload_library()
-		var new_material = PlanetLibraryLoader.get_planet_material(planet_id)
-		if new_material:
+		
+		# Get fresh data from library
+		var planet_data = PlanetLibraryLoader.get_planet_data(planet_id)
+		
+		if planet_data.material:
 			# Stop current animations
 			if planet_animator:
 				planet_animator.stop_animations()
@@ -192,8 +198,42 @@ func reload_planet_from_library():
 				planet_animator = null
 			
 			# Apply new material and restart animations
-			procedural_planet.material = new_material
-			apply_system_variations(new_material)
-			setup_planet_animations(new_material)
+			procedural_planet.material = planet_data.material
+			apply_system_variations(planet_data.material)
+			setup_planet_animations_from_library(planet_data.material, planet_data.animation_data)
 			
 			print("Reloaded planet from library: ", planet_id)
+			if planet_data.has_animations:
+				print("  • Reloaded animations for ", planet_data.animation_data.size(), " parameters")
+
+# Debug function to print current animation status
+func debug_print_animation_status():
+	"""Print debug information about this planet's animations"""
+	print("=== Animation Status for ", celestial_data.get("name", "Unknown"), " ===")
+	
+	if not planet_animator:
+		print("❌ No planet animator attached")
+		return
+	
+	if planet_animator.animations.is_empty():
+		print("⚪ No animations defined")
+		return
+	
+	print("✅ Active animations: ", planet_animator.animations.size())
+	for anim in planet_animator.animations:
+		var status = "▶️ RUNNING" if planet_animator.is_active else "⏸️ PAUSED"
+		print("  • %s (%s, rate: %.3f) %s" % [
+			anim.parameter_name, 
+			anim.animation_type, 
+			anim.rate,
+			status
+		])
+	
+	print("Animator active: ", planet_animator.is_active)
+	print("================================================")
+
+# LEGACY COMPATIBILITY - Remove these when all systems are updated
+func setup_planet_animations(material: ShaderMaterial, animation_data: Dictionary):
+	"""Legacy function for backward compatibility - now redirects to new system"""
+	push_warning("CelestialBody.setup_planet_animations(): This function is deprecated. Use setup_planet_animations_from_library() instead.")
+	setup_planet_animations_from_library(material, animation_data)
