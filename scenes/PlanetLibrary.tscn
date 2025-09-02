@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://ckqawt5f0td3o"]
+[gd_scene load_steps=29 format=3 uid="uid://ckqawt5f0td3o"]
 
 [ext_resource type="Script" uid="uid://ba44yhnqqhxc8" path="res://scripts/PlanetLibraryViewer.gd" id="1_6444o"]
 [ext_resource type="Shader" uid="uid://du62yo5yqkelo" path="res://shaders/PlanetShader_Stage10.gdshader" id="2_17jbo"]
@@ -575,6 +575,46 @@ shader_parameter/core_size = 1.85
 shader_parameter/color_variation = 0.0
 shader_parameter/variation_tint = Color(0.2, 0.5, 0.8, 1)
 
+[sub_resource type="Resource" id="Resource_orco5"]
+script = ExtResource("3_6444o")
+parameter_name = "uv_offset_x"
+animation_type = "linear"
+rate = 0.02
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_rllgy"]
+script = ExtResource("3_6444o")
+parameter_name = "cloud_offset_x"
+animation_type = "linear"
+rate = 0.02
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_2b4hm"]
+script = ExtResource("3_6444o")
+parameter_name = "cloud_offset_y"
+animation_type = "linear"
+rate = 0.025
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_m5gsh"]
+script = ExtResource("3_6444o")
+parameter_name = "continent_threshold"
+animation_type = "sine"
+rate = 1.0
+amplitude = 0.01
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w7247"]
 shader = ExtResource("2_17jbo")
 shader_parameter/planet_radius = 0.45
@@ -795,6 +835,56 @@ shader_parameter/core_size = 0.0
 shader_parameter/color_variation = 1.382
 shader_parameter/variation_tint = Color(0.715603, 0.160823, 0.18497, 1)
 
+[sub_resource type="Resource" id="Resource_dcso2"]
+script = ExtResource("3_6444o")
+parameter_name = "uv_offset_y"
+animation_type = "linear"
+rate = -0.02
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_wyyg7"]
+script = ExtResource("3_6444o")
+parameter_name = "cloud_offset_x"
+animation_type = "linear"
+rate = 0.02
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_yvipk"]
+script = ExtResource("3_6444o")
+parameter_name = "rim_light_intensity"
+animation_type = "sine"
+rate = 1.0
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_v7bj2"]
+script = ExtResource("3_6444o")
+parameter_name = "light_intensity"
+animation_type = "sine"
+rate = 1.0
+amplitude = 1.0
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
+[sub_resource type="Resource" id="Resource_ap2rd"]
+script = ExtResource("3_6444o")
+parameter_name = "warp_strength"
+animation_type = "sine"
+rate = 0.05
+amplitude = 0.2
+offset_x = 0.0
+offset_y = 0.0
+metadata/_custom_type_script = "uid://dtfk2sa0k88xk"
+
 [node name="PlanetLibrary" type="Node2D"]
 script = ExtResource("1_6444o")
 
@@ -844,6 +934,11 @@ offset_top = 600.0
 offset_right = 1112.0
 offset_bottom = 1112.0
 
+[node name="PlanetAnimationSet" type="Node" parent="planet_rigel_beta"]
+script = ExtResource("2_36wlk")
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_orco5"), SubResource("Resource_rllgy"), SubResource("Resource_2b4hm"), SubResource("Resource_m5gsh")])
+metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
+
 [node name="planet_new_geneva" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_w7247")
 offset_left = 1200.0
@@ -861,3 +956,8 @@ material = SubResource("ShaderMaterial_dcso2")
 offset_left = 2400.0
 offset_right = 2912.0
 offset_bottom = 512.0
+
+[node name="PlanetAnimationSet" type="Node" parent="planet_vega_prime"]
+script = ExtResource("2_36wlk")
+parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_dcso2"), SubResource("Resource_wyyg7"), SubResource("Resource_yvipk"), SubResource("Resource_v7bj2"), SubResource("Resource_ap2rd")])
+metadata/_custom_type_script = "uid://bnlvy0qphdwqo"

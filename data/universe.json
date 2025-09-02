@@ -153,25 +153,6 @@
 		  "government": "confederation",
 		  "tech_level": 4,
 		  "population": 8000000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": -0.01
-			},
-			"cloud_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.02
-			},
-			"cloud_offset_y": {
-			  "type": "linear", 
-			  "rate": 0.025
-			},
-			"cloud_sharpness": {
-			  "type": "sine", 
-			  "rate": 0.3, 
-			  "amplitude": 0.1
-			}
-		  }
 		},
 		{
 		  "id": "alpha_centauri_b",
@@ -224,35 +205,6 @@
 		  "government": "independent",
 		  "tech_level": 3,
 		  "population": 8000000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.01
-			},
-			"uv_offset_y": {
-			  "type": "linear", 
-			  "rate": -0.02
-			},
-			"cloud_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.02
-			},
-			"rim_light_intensity": {
-			  "type": "sine", 
-			  "rate": 1, 
-			  "amplitude": 1
-			},
-			"light_intensity": {
-			  "type": "sine", 
-			  "rate": 1, 
-			  "amplitude": 1
-			},
-			"warp_strength": {
-			  "type": "sine", 
-			  "rate": 0.05, 
-			  "amplitude": 0.2
-			}
-		  }
 		},
 		{
 		  "id": "vega_station",
@@ -350,26 +302,7 @@
 		  "services": ["commodity_exchange", "mission_computer", "hyperspace_recharge"],
 		  "government": "confederation",
 		  "tech_level": 4,
-		  "population": 100000000,
-		  "animations": {
-			"uv_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.01
-			},
-			"cloud_offset_x": {
-			  "type": "linear", 
-			  "rate": 0.02
-			},
-			"cloud_offset_y": {
-			  "type": "linear", 
-			  "rate": 0.025
-			},
-			"continent_threshold": {
-			  "type": "sine", 
-			  "rate": 1, 
-			  "amplitude": 0.01
-			}
-		  }
+		  "population": 150000000
 		}
 	  ]
 	},
