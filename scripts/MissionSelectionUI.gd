@@ -17,7 +17,7 @@ var selected_mission_button: Button = null
 
 # Planet info
 var current_planet_data: Dictionary = {}
-var current_system_id: String = ""
+var current_system_id: int = -1
 
 # Signals
 signal mission_accepted(mission_data: Dictionary)
@@ -83,7 +83,7 @@ func _on_mission_focus_changed(button: Button):
 		var mission_data = available_missions[button_index]
 		_on_mission_button_pressed(mission_data, button)
 
-func show_mission_selection(planet_data: Dictionary, system_id: String, missions: Array[Dictionary]):
+func show_mission_selection(planet_data: Dictionary, system_id: int, missions: Array[Dictionary]):
 	"""Display the mission selection interface"""
 	current_planet_data = planet_data
 	current_system_id = system_id
@@ -341,17 +341,3 @@ func _input(event):
 	elif event.is_action_pressed("ui_cancel"):
 		_on_back_button_pressed()
 		get_viewport().set_input_as_handled()
-
-# =============================================================================
-# DEBUG METHODS
-# =============================================================================
-
-func debug_show_test_missions():
-	"""Debug method to test mission selection interface"""
-	var test_planet = {
-		"id": "earth",
-		"name": "Earth"
-	}
-	
-	var test_missions = MissionGenerator.debug_generate_test_missions()
-	show_mission_selection(test_planet, "sol_system", test_missions)

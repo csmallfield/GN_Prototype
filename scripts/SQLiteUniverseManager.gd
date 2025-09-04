@@ -216,7 +216,8 @@ func load_system_bodies(system_id: int) -> Array:
 	var bodies_query = """
 		SELECT 
 			id, name, type, pos_x, pos_y, scale, can_land,
-			shipyard_package, description, flavor_text
+			shipyard_package, description, flavor_text,
+			service_refuel, service_missions, service_shipyard
 		FROM celestial_bodies
 		WHERE system_id = ?
 		ORDER BY name;
@@ -230,6 +231,9 @@ func load_system_bodies(system_id: int) -> Array:
 	var celestial_bodies = []
 	
 	for body_row in bodies_results:
+		# Build services array from database boolean columns
+		var services = build_services_array(body_row)
+		
 		# Use integer IDs throughout
 		var body_data = {
 			"id": body_row.id,  # Integer database ID
@@ -240,7 +244,7 @@ func load_system_bodies(system_id: int) -> Array:
 			"position": {"x": body_row.pos_x, "y": body_row.pos_y},
 			"scale": body_row.scale,
 			"can_land": bool(body_row.can_land),
-			"services": ["outfitter", "commodity_exchange", "mission_computer"],
+			"services": services,  # ← Now loaded from database
 			"government": "confederation",
 			"tech_level": 4,
 			"population": 1000000
@@ -250,9 +254,34 @@ func load_system_bodies(system_id: int) -> Array:
 			body_data["shipyard"] = {"available_ships": [body_row.shipyard_package]}
 		
 		celestial_bodies.append(body_data)
-		print("  Loaded body: ", body_data.name, " (ID: ", body_data.id, ")")
+		print("  Loaded body: ", body_data.name, " (ID: ", body_data.id, ") with services: ", services)
 	
 	return celestial_bodies
+
+func build_services_array(body_row: Dictionary) -> Array:
+	"""Convert database service columns to services array"""
+	var services = []
+	
+	# Add services based on database boolean columns
+	if body_row.get("service_missions", 0):
+		services.append("mission_computer")  # This enables shipping missions
+	
+	if body_row.get("service_refuel", 0):
+		services.append("hyperspace_recharge")
+	
+	if body_row.get("service_shipyard", 0):
+		services.append("shipyard")
+	
+	# Add standard services for landable planets
+	if body_row.get("can_land", 0):
+		services.append("outfitter")
+		services.append("commodity_exchange")
+	
+	# Always ensure mission_computer is available if no services specified but can_land is true
+	if services.is_empty() and body_row.get("can_land", 0):
+		services.append("mission_computer")
+	
+	return services
 
 func get_system_connections(system_id: int) -> Array[int]:
 	"""Get array of connected system IDs"""
@@ -346,7 +375,8 @@ func load_all_systems_for_map() -> Dictionary:
 				"y": system_row.y / 1000.0
 			},
 			"flavor_text": system_row.flavor_text if system_row.flavor_text else "",
-			"connections": get_system_connections(system_id)
+			"connections": get_system_connections(system_id),
+			"celestial_bodies": load_system_bodies(system_id)
 		}
 		
 		universe_data.systems[system_id] = system_data

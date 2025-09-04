@@ -188,8 +188,8 @@ func accept_mission(mission_data: Dictionary) -> bool:
 	active_missions.append(mission_data)
 	
 	# Remove mission from available missions in the current system
-	var origin_planet = mission_data.get("origin_planet", "")
-	if origin_planet != "":
+	var origin_planet = mission_data.get("origin_planet", -1)
+	if origin_planet != -1:
 		UniverseManager.remove_mission_from_system(origin_planet, mission_data)
 	
 	mission_accepted.emit(mission_data)

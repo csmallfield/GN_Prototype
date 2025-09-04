@@ -20,7 +20,7 @@ var selected_ship_button: Button = null
 
 # Planet info
 var current_planet_data: Dictionary = {}
-var current_system_id: String = ""
+var current_system_id: int = -1
 
 # Signals
 signal ship_purchased(ship_data: Dictionary)
@@ -86,7 +86,7 @@ func _on_ship_focus_changed(button: Button):
 		var ship_id = available_ships[button_index]
 		_on_ship_button_pressed(ship_id, button)
 
-func show_shipyard(planet_data: Dictionary, system_id: String):
+func show_shipyard(planet_data: Dictionary, system_id: int):
 	"""Display the shipyard interface"""
 	current_planet_data = planet_data
 	current_system_id = system_id
@@ -487,19 +487,3 @@ func _input(event):
 	elif event.is_action_pressed("ui_cancel"):
 		_on_back_button_pressed()
 		get_viewport().set_input_as_handled()
-
-# =============================================================================
-# DEBUG METHODS
-# =============================================================================
-
-func debug_show_test_shipyard():
-	"""Debug method to test the shipyard interface"""
-	var test_planet = {
-		"id": "earth",
-		"name": "Earth",
-		"shipyard": {
-			"available_ships": ["scout_mk1", "cargo_hauler", "interceptor"]
-		}
-	}
-	
-	show_shipyard(test_planet, "sol_system")
