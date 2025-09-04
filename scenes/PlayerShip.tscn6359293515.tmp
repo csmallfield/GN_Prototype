@@ -1,0 +1,58 @@
+[gd_scene load_steps=7 format=3 uid="uid://el1ywym68otq"]
+
+[ext_resource type="Script" uid="uid://dpfhxkdfjm6rd" path="res://scripts/PlayerShip.gd" id="1_iig01"]
+[ext_resource type="Texture2D" uid="uid://c44abuabs8x3i" path="res://sprites/ships/player_ship.png" id="2_hkka0"]
+[ext_resource type="Script" uid="uid://b8mcil56a1men" path="res://scripts/combat/WeaponHardpoint.gd" id="3_a884r"]
+[ext_resource type="Texture2D" uid="uid://dnxqq5fcqqfp5" path="res://sprites/utility/muzzleFlash.png" id="4_qsm08"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hkka0"]
+radius = 14.1421
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_a884r"]
+radius = 100.02
+
+[node name="PlayerShip" type="RigidBody2D"]
+gravity_scale = 0.0
+linear_damp = 0.1
+angular_damp = 1.0
+script = ExtResource("1_iig01")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_hkka0")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_hkka0")
+
+[node name="EngineParticles" type="CPUParticles2D" parent="."]
+position = Vector2(-1, 22)
+emitting = false
+amount = 600
+lifetime = 1.12
+lifetime_randomness = 0.65
+direction = Vector2(0, 1)
+spread = 20.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 100.0
+initial_velocity_max = 100.0
+color = Color(1, 1, 0.286275, 1)
+hue_variation_min = 0.55
+hue_variation_max = 0.91
+
+[node name="InteractionArea" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("CircleShape2D_a884r")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+
+[node name="WeaponHardpoint" type="Node2D" parent="."]
+position = Vector2(0, -30)
+script = ExtResource("3_a884r")
+
+[node name="MuzzleFlash" type="Node2D" parent="WeaponHardpoint"]
+position = Vector2(0, 30)
+
+[node name="Sprite2D" type="Sprite2D" parent="WeaponHardpoint/MuzzleFlash"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("4_qsm08")

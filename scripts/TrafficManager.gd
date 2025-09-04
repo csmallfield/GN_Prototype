@@ -1,5 +1,5 @@
 # =============================================================================
-# ENHANCED TRAFFIC MANAGER - Phase 2 with JSON-Configurable Archetypes
+# ENHANCED TRAFFIC MANAGER - Integer ID System
 # =============================================================================
 extends Node2D
 class_name TrafficManager
@@ -39,10 +39,10 @@ var default_config = {
 func _ready():
 	add_to_group("traffic_manager")
 	
-	# Connect to system changes
+	# Connect to system changes (now uses integer IDs)
 	UniverseManager.system_changed.connect(_on_system_changed)
 	
-	# Initialize with current system
+	# Initialize with current system (now integer ID)
 	_on_system_changed(UniverseManager.current_system_id)
 
 func _process(delta):
@@ -109,7 +109,7 @@ func create_npc_ship():
 	var npc_ship = npc_ship_scene.instantiate()
 	
 	if debug_mode:
-		print("Created NPC ship for Phase 2")
+		print("Created NPC ship")
 	
 	return npc_ship
 
@@ -141,17 +141,17 @@ func assign_archetype_to_npc(npc_ship):
 		_:
 			archetype = AIArchetypeClass.create_trader()
 	
-	# NEW: Set archetype directly on AI (the enhanced AI will handle social combat setup)
+	# Set archetype directly on AI
 	ai_component.archetype = archetype
 	
-	# NEW: Let AI recreate its behavior tree with the new archetype
+	# Let AI recreate its behavior tree with the new archetype
 	if ai_component.has_method("setup_behavior_tree"):
 		ai_component.setup_behavior_tree()
 	
 	# Visual distinction (optional)
 	apply_visual_archetype_hints(npc_ship, chosen_archetype)
 	
-	# NEW: Enable debug for testing (remove this later)
+	# Enable debug for testing (remove this later)
 	if OS.is_debug_build():
 		await get_tree().process_frame  # Wait for social system to be created
 		if npc_ship.has_method("debug_enable_social_combat_debug"):
@@ -282,8 +282,8 @@ func cleanup_distant_npcs():
 			npc.queue_free()
 			current_npcs.remove_at(i)
 
-func _on_system_changed(system_id: String):
-	"""Handle system changes"""
+func _on_system_changed(system_id: int):
+	"""Handle system changes - now uses integer system ID"""
 	# Clear existing NPCs
 	cleanup_all_npcs()
 	
@@ -300,11 +300,12 @@ func _on_system_changed(system_id: String):
 	reset_spawn_timer()
 	
 	if debug_mode:
-		print("TrafficManager: System changed to ", system_id)
+		var system_name = UniverseManager.get_system_name(system_id)
+		print("TrafficManager: System changed to ", system_name, " (ID: ", system_id, ")")
 		print("TrafficManager: Loaded archetype weights: ", current_archetype_weights)
 
-func load_system_traffic_config(system_id: String):
-	"""Load traffic configuration for the specified system, including archetype weights"""
+func load_system_traffic_config(system_id: int):
+	"""Load traffic configuration for the specified system ID"""
 	var system_data = UniverseManager.get_current_system()
 	system_traffic_config = system_data.get("traffic", {})
 	
@@ -317,7 +318,8 @@ func load_system_traffic_config(system_id: String):
 	load_archetype_weights(system_data)
 	
 	if debug_mode:
-		print("TrafficManager: Loaded traffic config for ", system_id)
+		var system_name = UniverseManager.get_system_name(system_id)
+		print("TrafficManager: Loaded traffic config for ", system_name, " (ID: ", system_id, ")")
 		print("  Max NPCs: ", system_traffic_config.get("max_npcs", "default"))
 		print("  Spawn frequency: ", system_traffic_config.get("spawn_frequency", "default"))
 		print("  Archetype weights: ", current_archetype_weights)
@@ -421,7 +423,9 @@ func _draw():
 		draw_string(font, local_pos + Vector2(10, 0), npc_info, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 	
 	# Draw spawn timer and current archetype distribution
-	var timer_info = "Spawn in: " + str(round(spawn_timer * 10) / 10.0) + "s\nNPCs: " + str(current_npcs.size()) + "/" + str(system_traffic_config.get("max_npcs", 0))
+	var current_system_name = UniverseManager.get_system_name(UniverseManager.current_system_id)
+	var timer_info = "System: " + current_system_name + " (ID: " + str(UniverseManager.current_system_id) + ")"
+	timer_info += "\nSpawn in: " + str(round(spawn_timer * 10) / 10.0) + "s\nNPCs: " + str(current_npcs.size()) + "/" + str(system_traffic_config.get("max_npcs", 0))
 	timer_info += "\nCurrent Weights:"
 	for archetype in current_archetype_weights:
 		var percentage = int(current_archetype_weights[archetype] * 100)
@@ -436,7 +440,8 @@ func _draw():
 func debug_print_current_weights():
 	"""Debug method to print current archetype weights"""
 	print("=== CURRENT ARCHETYPE WEIGHTS ===")
-	print("System: ", UniverseManager.current_system_id)
+	var system_name = UniverseManager.get_system_name(UniverseManager.current_system_id)
+	print("System: ", system_name, " (ID: ", UniverseManager.current_system_id, ")")
 	for archetype in current_archetype_weights:
 		var percentage = int(current_archetype_weights[archetype] * 100)
 		print("  ", archetype.capitalize(), ": ", percentage, "%")

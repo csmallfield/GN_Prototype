@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1gmlfuoemn6u"
-path="res://.godot/imported/earth_surface.png-ac37a957160b61067a3603377725024d.ctex"
+path="res://.godot/imported/gaia_surface.png-884fa557ca870f31f090e4e07147c0f0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/planets/surfaces/earth_surface.png"
-dest_files=["res://.godot/imported/earth_surface.png-ac37a957160b61067a3603377725024d.ctex"]
+source_file="res://sprites/planets/surfaces/gaia_surface.png"
+dest_files=["res://.godot/imported/gaia_surface.png-884fa557ca870f31f090e4e07147c0f0.ctex"]
 
 [params]
 

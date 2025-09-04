@@ -1,5 +1,5 @@
 # =============================================================================
-# PLAYER SHIP - Main player controller with hyperspace sequence
+# PLAYER SHIP - Main player controller with hyperspace sequence (Integer ID System)
 # =============================================================================
 # PlayerShip.gd
 extends RigidBody2D
@@ -11,7 +11,6 @@ var rotation_speed: float = 3.0
 var max_velocity: float = 400.0
 var hyperspace_thrust_power: float = 1500.0
 var hyperspace_entry_speed: float = 800.0
-
 
 var hull: float = 1000.0        # Player has more health
 var max_hull: float = 500.0
@@ -44,7 +43,7 @@ enum HyperspacePhase {
 
 var hyperspace_state: HyperspaceState = HyperspaceState.NORMAL
 var hyperspace_phase: HyperspacePhase = HyperspacePhase.DECELERATION
-var hyperspace_destination: String = ""
+var hyperspace_destination: int = -1  # FIXED: Now integer ID
 var hyperspace_timer: float = 0.0
 var target_rotation: float = 0.0
 var acceleration_timer: float = 0.0
@@ -132,7 +131,6 @@ func take_damage(amount: float, attacker: Node2D = null):
 		if hull <= 0:
 			player_destroyed()
 
-# Add this method to PlayerShip.gd:
 func player_destroyed():
 	"""Handle player death"""
 	print("*** PLAYER DESTROYED ***")
@@ -156,7 +154,6 @@ func player_destroyed():
 		get_tree().reload_current_scene()
 	)
 
-# Add this method to PlayerShip.gd:
 func add_screen_shake():
 	"""Simple screen shake when taking damage"""
 	if not camera:
@@ -179,7 +176,6 @@ func add_screen_shake():
 	# Return to normal
 	tween.tween_property(camera, "offset", original_pos, 0.1)
 
-# Add this to your _process() method in PlayerShip.gd:
 func update_shield_recharge(delta: float):
 	"""Handle shield recharging"""
 	if shields >= max_shields:
@@ -193,13 +189,11 @@ func update_shield_recharge(delta: float):
 	var recharge_rate = 10.0  # shields per second
 	shields = min(shields + recharge_rate * delta, max_shields)
 
-# Add this to your _input() method in PlayerShip.gd:
 func handle_combat_input(event):
 	"""Handle combat input"""
 	if event.is_action_pressed("shoot"):  # Space bar or A button
 		fire_player_weapon()
 
-# Add this method to PlayerShip.gd:
 func fire_player_weapon():
 	"""Fire the player's weapon"""
 	var weapon_hardpoint = get_node_or_null("WeaponHardpoint")
@@ -208,7 +202,6 @@ func fire_player_weapon():
 			print("Player fired weapon")
 		else:
 			print("Player weapon not ready")
-
 
 func setup_test_weapon():
 	var hardpoint = get_node_or_null("WeaponHardpoint")
@@ -388,7 +381,8 @@ func handle_entry_phase(state):
 
 func transition_to_new_system():
 	"""Handle the actual system change and ship positioning"""
-	print("Transitioning to new system: ", hyperspace_destination)
+	var destination_name = UniverseManager.get_system_name(hyperspace_destination)
+	print("Transitioning to new system: ", destination_name, " (ID: ", hyperspace_destination, ")")
 	
 	# Calculate entry position based on map direction
 	var system_center = Vector2.ZERO
@@ -415,7 +409,7 @@ func transition_to_new_system():
 		camera.global_position = global_position
 		camera.reset_smoothing()  # This should reset any interpolation
 	
-	# Now change the system
+	# Now change the system - FIXED: Now using integer ID
 	UniverseManager.change_system(hyperspace_destination)
 	
 	# Force another camera update after system change
@@ -441,7 +435,8 @@ func calculate_target_rotation():
 		# So we need to subtract PI/2 instead of adding it
 		target_rotation = map_direction.angle() + PI/2
 		
-		print("Direction to ", hyperspace_destination, ": ", map_direction)
+		var destination_name = UniverseManager.get_system_name(hyperspace_destination)
+		print("Direction to ", destination_name, ": ", map_direction)
 		print("Target rotation: ", rad_to_deg(target_rotation), " degrees")
 		print("Current rotation: ", rad_to_deg(rotation), " degrees")
 	else:
@@ -450,14 +445,16 @@ func calculate_target_rotation():
 		map_direction = Vector2(0, -1)
 
 func get_system_positions() -> Dictionary:
-	"""Get system positions from universe.json data"""
+	"""Get system positions using integer IDs as keys"""
 	var positions = {}
+	UniverseManager.ensure_all_systems_loaded()
 	var systems_data = UniverseManager.universe_data.get("systems", {})
 	var map_width = 480
 	var map_height = 500 
 	var margin = 50
 	
-	for system_id in systems_data:
+	# systems_data now has integer keys
+	for system_id in systems_data.keys():
 		var system_data = systems_data[system_id]
 		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
 		positions[system_id] = Vector2(
@@ -678,8 +675,8 @@ func find_nearby_landable_planet() -> Node:
 
 func check_for_deliveries():
 	"""Check if player has missions to deliver to this planet"""
-	var planet_id = current_target.celestial_data.get("id", "")
-	var system_id = UniverseManager.current_system_id
+	var planet_id = current_target.celestial_data.get("id", -1)  # FIXED: Now integer
+	var system_id = UniverseManager.current_system_id  # FIXED: Now integer
 	
 	var delivery_mission = PlayerData.has_active_mission_to_planet(planet_id, system_id)
 	if not delivery_mission.is_empty():
@@ -698,8 +695,8 @@ func check_for_deliveries():
 
 func show_available_missions():
 	"""Show missions available for pickup at this planet"""
-	var planet_id = current_target.celestial_data.get("id", "")
-	if planet_id != "":
+	var planet_id = current_target.celestial_data.get("id", -1)  # FIXED: Now integer
+	if planet_id != -1:
 		var missions = UniverseManager.get_missions_for_planet(planet_id)
 		print("📦 Available missions at this location: ", missions.size())
 		
@@ -730,15 +727,27 @@ func debug_test_mission_system():
 	var current_system = UniverseManager.get_current_system()
 	print("Current system: ", current_system.get("name", "Unknown"))
 	
-	# Get missions for Earth (if we're in Sol system)
-	if UniverseManager.current_system_id == "sol_system":
-		var earth_missions = UniverseManager.get_missions_for_planet("earth")
-		print("Earth has ", earth_missions.size(), " missions:")
-		for mission in earth_missions:
+	# FIXED: Get first landable planet in current system for testing
+	var celestial_bodies = current_system.get("celestial_bodies", [])
+	var test_planet_id = -1
+	var test_planet_name = "Unknown"
+	
+	for body in celestial_bodies:
+		if body.get("can_land", false):
+			test_planet_id = body.get("id", -1)
+			test_planet_name = body.get("name", "Unknown")
+			break
+	
+	if test_planet_id != -1:
+		var planet_missions = UniverseManager.get_missions_for_planet(test_planet_id)
+		print(test_planet_name, " has ", planet_missions.size(), " missions:")
+		for mission in planet_missions:
 			print("  - ", MissionGenerator.get_mission_description(mission))
+	else:
+		print("No landable planets found in current system for testing")
 	
 	print("=== MISSION SYSTEM TEST COMPLETE ===")
-	print("Press Enter again to test, L to land on planets when implemented")
+	print("Press F12 again to test, L to land on planets")
 
 func _on_interaction_area_entered(body):
 	if body.has_method("can_interact") and body.can_interact():
@@ -749,9 +758,10 @@ func _on_interaction_area_exited(body):
 	if body == current_target:
 		current_target = null
 
-func start_hyperspace_sequence(destination_system: String):
+func start_hyperspace_sequence(destination_system: int):  # FIXED: Now integer parameter
 	"""Begin the hyperspace jump sequence"""
-	print("Starting hyperspace sequence to: ", destination_system)
+	var destination_name = UniverseManager.get_system_name(destination_system)
+	print("Starting hyperspace sequence to: ", destination_name, " (ID: ", destination_system, ")")
 	
 	# Check if player has jumps available
 	if not PlayerData.can_hyperspace_jump():
@@ -768,10 +778,10 @@ func start_hyperspace_sequence(destination_system: String):
 		camera.position_smoothing_enabled = false
 		camera.global_position = global_position
 	
-	# Reset all state
+	# Reset all state - FIXED: Now using integer ID
 	hyperspace_state = HyperspaceState.HYPERSPACE_SEQUENCE
 	hyperspace_phase = HyperspacePhase.DECELERATION
-	hyperspace_destination = destination_system
+	hyperspace_destination = destination_system  # Now integer
 	hyperspace_timer = 0.0
 	target_rotation = 0.0
 	acceleration_timer = 0.0
@@ -851,10 +861,10 @@ func complete_hyperspace_sequence():
 	if camera:
 		camera.position_smoothing_enabled = true
 	
-	# Reset to normal state
+	# Reset to normal state - FIXED: Reset to integer -1
 	hyperspace_state = HyperspaceState.NORMAL
 	hyperspace_phase = HyperspacePhase.DECELERATION
-	hyperspace_destination = ""
+	hyperspace_destination = -1  # FIXED: Reset to integer -1
 	hyperspace_timer = 0.0
 	target_rotation = 0.0
 	acceleration_timer = 0.0
@@ -888,44 +898,6 @@ func create_flash_overlay():
 	canvas_layer.add_child(flash_overlay)
 	
 	print("Flash overlay created in CanvasLayer")
-	
-# =============================================================================
-# ADD THIS DEBUG METHOD TO PlayerShip.gd 
-# =============================================================================
-
-# Add this to your _input() method in PlayerShip.gd
-#func debug_combat_input(event):
-	#"""Debug combat functionality"""
-	#if not OS.is_debug_build():
-		#return
-	
-	#if event.is_action_pressed("debug_toggle"):  # F12 key
-		#test_npc_damage()
-
-#func test_npc_damage():
-	#"""Debug: damage nearby NPCs to test their combat AI"""
-	#print("🧪 Testing NPC damage and combat AI...")
-	
-	#var nearby_npcs = get_tree().get_nodes_in_group("npc_ships")
-	#var damaged_count = 0
-	
-	#for npc in nearby_npcs:
-		#if not is_instance_valid(npc):
-			#continue
-		
-		#var distance = global_position.distance_to(npc.global_position)
-		#if distance < 1000:  # Damage NPCs within 1000 units
-			#print("Damaging NPC: ", npc.name, " at distance: ", distance)
-			#npc.take_damage(25.0, self)  # Damage NPC with player as attacker
-			#damaged_count += 1
-	
-	#if damaged_count == 0:
-		#print("No NPCs found within 1000 units")
-		
-		# Spawn a test NPC if none exist
-		#spawn_test_npc()
-	#else:
-		#print("Damaged ", damaged_count, " NPCs - they should now attack the player")
 
 func spawn_test_npc():
 	"""Spawn a test NPC near the player for combat testing"""

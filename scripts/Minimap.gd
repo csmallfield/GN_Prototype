@@ -256,7 +256,7 @@ func find_celestial_bodies():
 	else:
 		print("Minimap: Could not find SystemScene")
 
-func _on_system_changed(_system_id: String):
+func _on_system_changed(system_id: int):
 	# System changed - re-enable minimap and refresh celestial bodies
 	if not is_active:
 		enable_minimap()

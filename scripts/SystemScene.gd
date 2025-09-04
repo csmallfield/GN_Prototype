@@ -15,7 +15,7 @@ func _ready():
 	UniverseManager.system_changed.connect(_on_system_changed)
 	setup_system(UniverseManager.get_current_system())
 
-func _on_system_changed(system_id: String):
+func _on_system_changed(system_id: int):
 	# Pause animations in old system before switching
 	pause_all_planet_animations()
 	setup_system(UniverseManager.get_current_system())

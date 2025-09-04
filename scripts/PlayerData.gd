@@ -231,10 +231,10 @@ func get_completed_missions() -> Array[Dictionary]:
 	"""Get array of completed missions"""
 	return completed_missions.duplicate()
 
-func has_active_mission_to_planet(planet_id: String, system_id: String) -> Dictionary:
-	"""Check if player has an active mission to deliver to specific planet"""
+func has_active_mission_to_planet(planet_id: int, system_id: int) -> Dictionary:
+	"""Check missions using integer IDs"""
 	for mission in active_missions:
-		if mission.get("destination_planet", "") == planet_id and mission.get("destination_system", "") == system_id:
+		if mission.get("destination_planet", -1) == planet_id and mission.get("destination_system", -1) == system_id:
 			return mission
 	return {}
 

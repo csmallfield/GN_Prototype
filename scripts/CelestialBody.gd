@@ -12,6 +12,13 @@ class_name CelestialBody
 var procedural_planet: ColorRect = null
 var planet_animator: PlanetAnimator = null
 
+# In apply_system_variations()
+var system_id = UniverseManager.current_system_id  # Now integer
+var planet_id = celestial_data.get("id", -1)       # Now integer
+
+# Generate seeds using integer IDs  
+var base_seed = hash(str(planet_id) + str(system_id)) % 1000
+
 func _ready():
 	if celestial_data.has("type") and celestial_data.type == "planet":
 		create_procedural_planet()
@@ -105,7 +112,7 @@ func apply_system_variations(material: ShaderMaterial):
 	var planet_id = str(planet_id_raw) if planet_id_raw != null else ""
 	
 	# Generate system-consistent but planet-unique seeds
-	var base_seed = hash(planet_id + system_id) % 1000
+	var base_seed = hash(str(planet_id) + str(system_id)) % 1000
 	var system_rng = RandomNumberGenerator.new()
 	system_rng.seed = hash(system_id)
 	
@@ -122,9 +129,12 @@ func apply_system_variations(material: ShaderMaterial):
 	# Apply system-based lighting variations (different star types)
 	apply_star_lighting(material, system_id)
 
-func apply_star_lighting(material: ShaderMaterial, system_id: String):
+func apply_star_lighting(material: ShaderMaterial, system_id: int):
 	"""Apply star-type-specific lighting"""
-	match system_id:
+	# Get system name for matching if needed
+	var system_name = UniverseManager.get_system_name(system_id)
+	
+	match system_name:
 		"Helios":
 			# Yellow star - warm light (your starting system)
 			material.set_shader_parameter("light_color", Color(0.921, 0.594, 0.674))

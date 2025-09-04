@@ -15,7 +15,7 @@ class_name PlanetLandingUI
 
 # Current planet data
 var current_planet_data: Dictionary = {}
-var current_system_id: String = ""
+var current_system_id: int = -1
 
 # Signals for mission system integration
 signal mission_interface_requested
@@ -60,7 +60,7 @@ func setup_gamepad_focus():
 	# Note: Actual focus neighbors are set up in setup_planet_services()
 	# based on which services are available on the current planet
 
-func show_landing_interface(planet_data: Dictionary, system_id: String):
+func show_landing_interface(planet_data: Dictionary, system_id: int):
 	"""Display the landing interface for a specific planet"""
 	current_planet_data = planet_data
 	current_system_id = system_id
@@ -136,7 +136,7 @@ func setup_planet_display():
 	planet_name_label.text = planet_name
 	
 	# Load planet surface image
-	load_planet_surface_image(planet_id)
+	load_planet_surface_image(planet_name)
 	
 	# Set flavor text with player status
 	set_planet_flavor_text_with_status()
@@ -268,7 +268,7 @@ func generate_default_flavor_text() -> String:
 
 func check_for_deliveries():
 	"""Check if player has deliveries for this planet and auto-complete them"""
-	var planet_id = current_planet_data.get("id", "")
+	var planet_id = current_planet_data.get("id", -1)  # FIXED: Now integer
 	var delivery_mission = PlayerData.has_active_mission_to_planet(planet_id, current_system_id)
 	
 	if not delivery_mission.is_empty():
@@ -352,7 +352,7 @@ func _on_shipping_missions_pressed():
 	print("Shipping Missions button pressed")
 	
 	# Get available missions for this planet
-	var planet_id = current_planet_data.get("id", "")
+	var planet_id = current_planet_data.get("id", -1)  # FIXED: Now integer
 	var missions = UniverseManager.get_missions_for_planet(planet_id)
 	
 	print("Found ", missions.size(), " missions for ", current_planet_data.get("name", "Unknown"))
@@ -362,7 +362,6 @@ func _on_shipping_missions_pressed():
 		show_mission_selection_interface(missions)
 	else:
 		print("No missions available at this location")
-		# TODO: Could show a "No missions available" popup later
 
 func show_mission_selection_interface(missions: Array[Dictionary]):
 	"""Show the mission selection interface"""
@@ -890,7 +889,7 @@ func _input(event):
 func debug_show_test_landing():
 	"""Debug method to test the landing interface"""
 	var test_planet = {
-		"id": "earth",
+		"id": 1,  # FIXED: Now integer
 		"name": "Earth", 
 		"type": "planet",
 		"population": 8000000000,
@@ -902,4 +901,4 @@ func debug_show_test_landing():
 		}
 	}
 	
-	show_landing_interface(test_planet, "sol_system")
+	show_landing_interface(test_planet, 1)  # FIXED: Now integer system ID
