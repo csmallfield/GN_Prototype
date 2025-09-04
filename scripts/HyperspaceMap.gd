@@ -1,6 +1,6 @@
 # =============================================================================
 # HYPERSPACE MAP - Visual galaxy map for system navigation with gamepad support
-# Now reads positions and connections directly from universe.json!
+# Now reads positions and connections directly from database via UniverseManager!
 # =============================================================================
 # HyperspaceMap.gd
 extends Control
@@ -127,14 +127,18 @@ func _on_map_focus_exited():
 	map_has_focus = false
 
 func load_systems_from_universe_data():
-	"""Load system positions and connections from universe.json data"""
+	"""Load system positions and connections from database via UniverseManager"""
 	print("Loading systems from universe data...")
+	
+	# CRITICAL: Ensure all systems are loaded for hyperspace map display
+	if UniverseManager.has_method("ensure_all_systems_loaded"):
+		UniverseManager.ensure_all_systems_loaded()
 	
 	# Get systems data from UniverseManager
 	systems_data = UniverseManager.universe_data.get("systems", {})
 	
 	if systems_data.is_empty():
-		push_error("No systems data found in universe.json!")
+		push_error("No systems data found in UniverseManager!")
 		return
 	
 	# Clear existing data
@@ -146,7 +150,7 @@ func load_systems_from_universe_data():
 	var map_height = 500
 	var margin = 50
 	
-	# Load positions and connections from JSON
+	# Load positions and connections from UniverseManager data
 	for system_id in systems_data:
 		var system_data = systems_data[system_id]
 		
@@ -158,7 +162,7 @@ func load_systems_from_universe_data():
 		)
 		system_positions[system_id] = actual_position
 		
-		# Load connections directly from JSON
+		# Load connections
 		var connections = system_data.get("connections", [])
 		system_connections[system_id] = connections
 		
@@ -456,7 +460,7 @@ func show_map():
 	# Hide minimap when hyperspace map is open
 	hide_minimap()
 	
-	# Reload systems data in case universe.json was modified
+	# Reload systems data in case universe data was modified
 	load_systems_from_universe_data()
 	current_system = UniverseManager.current_system_id
 	selected_system = ""

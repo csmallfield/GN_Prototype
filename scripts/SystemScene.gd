@@ -121,12 +121,25 @@ func is_valid_celestial_body(body_data) -> bool:
 	if body_data.is_empty():
 		return false
 	
-	# Must have required fields
+	# Must have required fields - handle different data types
 	var required_fields = ["id", "name", "type"]
 	for field in required_fields:
-		if not body_data.has(field) or body_data[field] == "":
+		if not body_data.has(field):
 			print("SystemScene: Celestial body missing required field: ", field)
 			return false
+		
+		# Handle different data types appropriately
+		var field_value = body_data[field]
+		if field == "id":
+			# ID can be integer or string, just make sure it exists and isn't null
+			if field_value == null:
+				print("SystemScene: Celestial body has null id field")
+				return false
+		else:
+			# For name and type, check they're not empty strings
+			if field_value == null or (field_value is String and field_value == ""):
+				print("SystemScene: Celestial body has empty/null field: ", field)
+				return false
 	
 	# Must have position data
 	if not body_data.has("position"):

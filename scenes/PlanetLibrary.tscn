@@ -938,13 +938,13 @@ script = ExtResource("2_36wlk")
 parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_7bdk8")])
 metadata/_custom_type_script = "uid://bnlvy0qphdwqo"
 
-[node name="planet_earth" type="ColorRect" parent="."]
+[node name="planet_gaia" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_6444o")
 offset_left = 600.0
 offset_right = 1112.0
 offset_bottom = 512.0
 
-[node name="PlanetAnimationSet" type="Node" parent="planet_earth"]
+[node name="PlanetAnimationSet" type="Node" parent="planet_gaia"]
 script = ExtResource("2_36wlk")
 parameter_animations = Array[ExtResource("3_6444o")]([SubResource("Resource_q4pxu"), SubResource("Resource_36wlk"), SubResource("Resource_6444o")])
 metadata/_custom_type_script = "uid://bnlvy0qphdwqo"

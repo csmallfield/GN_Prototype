@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-UniverseManager="*res://scripts/UniverseManager.gd"
+UniverseManager="*res://scripts/SQLiteUniverseManager.gd"
 PlayerData="*res://scripts/PlayerData.gd"
 ShipManager="*res://scripts/ShipManager.gd"
 
@@ -25,6 +25,10 @@ ShipManager="*res://scripts/ShipManager.gd"
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-sqlite/plugin.cfg")
 
 [input]
 

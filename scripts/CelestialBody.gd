@@ -1,5 +1,5 @@
 # =============================================================================
-# CELESTIAL BODY - Updated to use library animation system
+# CELESTIAL BODY - Updated to use library animation system and database IDs
 # =============================================================================
 # CelestialBody.gd
 extends StaticBody2D
@@ -23,14 +23,32 @@ func _ready():
 
 func create_procedural_planet():
 	"""Create a procedural planet using the library system with integrated animations"""
-	var planet_id = celestial_data.get("id", "default")
+	
+	# Handle database IDs (integers) vs JSON IDs (strings)
+	var raw_id = celestial_data.get("id", "default")
+	var planet_id: String
+	
+	# Convert database integer ID to string for PlanetLibraryLoader
+	if raw_id is int:
+		planet_id = str(raw_id)
+	elif raw_id is String:
+		planet_id = raw_id
+	else:
+		planet_id = "default"
+	
+	print("Creating procedural planet with ID: ", planet_id, " (original: ", raw_id, ")")
 	
 	# Get both material and animation data from the library
 	var planet_data = PlanetLibraryLoader.get_planet_data(planet_id)
 	
 	if not planet_data.material:
-		push_error("Failed to get material for planet: " + planet_id)
-		return
+		print("No material found for planet ID: ", planet_id, " - using default")
+		# Try with "default" as fallback
+		planet_data = PlanetLibraryLoader.get_planet_data("default")
+		
+		if not planet_data.material:
+			push_error("Failed to get material for planet: " + planet_id + " and default fallback failed")
+			return
 	
 	# Create ColorRect for the procedural planet
 	procedural_planet = ColorRect.new()
@@ -83,7 +101,8 @@ func setup_planet_animations_from_library(material: ShaderMaterial, animation_da
 func apply_system_variations(material: ShaderMaterial):
 	"""Apply minor system-specific variations (lighting, seeds)"""
 	var system_id = UniverseManager.current_system_id
-	var planet_id = celestial_data.get("id", "")
+	var planet_id_raw = celestial_data.get("id", "")
+	var planet_id = str(planet_id_raw) if planet_id_raw != null else ""
 	
 	# Generate system-consistent but planet-unique seeds
 	var base_seed = hash(planet_id + system_id) % 1000
@@ -106,8 +125,14 @@ func apply_system_variations(material: ShaderMaterial):
 func apply_star_lighting(material: ShaderMaterial, system_id: String):
 	"""Apply star-type-specific lighting"""
 	match system_id:
+		"Helios":
+			# Yellow star - warm light (your starting system)
+			material.set_shader_parameter("light_color", Color(0.921, 0.594, 0.674))
+			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
+			material.set_shader_parameter("light_intensity", 1.4)
+			
 		"sol_system":
-			#Yellow star - warm light
+			# Yellow star - warm light
 			material.set_shader_parameter("light_color", Color(0.921, 0.594, 0.674))
 			material.set_shader_parameter("ambient_color", Color(0.4, 0.6, 1.0))
 			material.set_shader_parameter("light_intensity", 1.4)
@@ -184,7 +209,9 @@ func resume_animations():
 func reload_planet_from_library():
 	"""Reload this planet's appearance from the library (useful during development)"""
 	if procedural_planet and celestial_data.get("type") == "planet":
-		var planet_id = celestial_data.get("id", "default")
+		var raw_id = celestial_data.get("id", "default")
+		var planet_id = str(raw_id) if raw_id is int else raw_id
+		
 		PlanetLibraryLoader.reload_library()
 		
 		# Get fresh data from library
