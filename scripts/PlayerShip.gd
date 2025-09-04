@@ -445,23 +445,30 @@ func calculate_target_rotation():
 		map_direction = Vector2(0, -1)
 
 func get_system_positions() -> Dictionary:
-	"""Get system positions using integer IDs as keys"""
+	"""Get system positions using same coordinate system as hyperspace map"""
 	var positions = {}
-	UniverseManager.ensure_all_systems_loaded()
-	var systems_data = UniverseManager.universe_data.get("systems", {})
-	var map_width = 480
-	var map_height = 500 
-	var margin = 50
 	
-	# systems_data now has integer keys
-	for system_id in systems_data.keys():
-		var system_data = systems_data[system_id]
-		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
+	# Query database directly for raw coordinates (same as hyperspace map)
+	if not UniverseManager.db:
+		print("❌ Database not available for position lookup")
+		return positions
+	
+	var systems_query = """
+		SELECT id, x, y FROM systems;
+	"""
+	
+	UniverseManager.db.query(systems_query)
+	var results = UniverseManager.db.query_result
+	
+	for system_row in results:
+		var system_id = system_row.id
+		# Use same coordinate system as hyperspace map (with Y-flip)
 		positions[system_id] = Vector2(
-			margin + map_width * map_pos.x,
-			margin + map_height * map_pos.y
+			float(system_row.x),
+			-float(system_row.y)  # Apply Y-flip to match hyperspace map display
 		)
 	
+	print("Loaded ", positions.size(), " system positions for hyperspace navigation")
 	return positions
 
 func angle_difference(current: float, target: float) -> float:
