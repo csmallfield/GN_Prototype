@@ -1,5 +1,5 @@
 # =============================================================================
-# HYPERSPACE MAP - Integer ID System
+# ENHANCED HYPERSPACE MAP - SQLite + Zoom/Pan Integration
 # =============================================================================
 # HyperspaceMap.gd
 extends Control
@@ -11,40 +11,38 @@ extends Control
 @onready var flavor_label = $MainContainer/RightPanel/FlavorPanel/FlavorLabel
 @onready var left_panel = $MainContainer/LeftPanel
 
-# ALL integer IDs
+# Database-loaded data (integer IDs)
 var systems_data: Dictionary = {}  # int -> system_data
-var system_positions: Dictionary = {}  # int -> Vector2
 var system_connections: Dictionary = {}  # int -> Array[int]
 var selected_system_id: int = -1
 var current_system_id: int = -1
 
-# Gamepad navigation
-var available_system_ids: Array[int] = []
-var system_index: int = -1
-var map_has_focus: bool = false
-var input_delay_timer: float = 0.0
-var input_delay_duration: float = 0.3
-var can_accept_input: bool = false
-
-# Navigation cooldown
-var navigation_cooldown_timer: float = 0.0
-var navigation_cooldown_duration: float = 0.25
-var can_navigate: bool = true
+# Zoom/Pan system (adapted from test)
+var zoom_level: float = 1.0
+var pan_offset: Vector2 = Vector2.ZERO
+var is_panning: bool = false
+var last_pan_position: Vector2
 
 # Visual settings
-var bg_color = Color(0.0, 0.2, 0.0, 0.25)
-var line_color = Color(0.0, 0.8, 0.0, 1.0)
-var system_color = Color(0.0, 1.0, 0.0, 1.0)
+var system_base_size: float = 0.8
+var connection_width: float = 2.0
+
+# Map canvas and coordinates
+var map_canvas: Control
+var coord_bounds: Dictionary = {
+	"min_x": 0.0, "max_x": 0.0,
+	"min_y": 0.0, "max_y": 0.0,
+	"width": 0.0, "height": 0.0
+}
+
+# Colors
+var connection_color = Color(0.0, 0.8, 0.0, 0.7)
 var current_system_color = Color(1.0, 1.0, 0.0, 1.0)
 var selected_system_color = Color(1.0, 0.5, 0.0, 1.0)
 var unavailable_color = Color(0.3, 0.3, 0.3, 1.0)
 
-var system_radius = 8.0
-var line_width = 2.0
-var map_canvas: Control
-
 func _ready():
-	load_systems_from_universe_data()
+	load_systems_from_database()
 	current_system_id = UniverseManager.current_system_id
 	
 	await get_tree().process_frame
@@ -55,108 +53,13 @@ func _ready():
 		cancel_button.pressed.connect(_on_cancel_pressed)
 	
 	setup_map_canvas()
-	setup_gamepad_focus()
+	setup_initial_view()
 	update_ui()
 
-func _process(delta):
-	if visible and not can_accept_input:
-		input_delay_timer += delta
-		if input_delay_timer >= input_delay_duration:
-			can_accept_input = true
-	
-	if not can_navigate:
-		navigation_cooldown_timer += delta
-		if navigation_cooldown_timer >= navigation_cooldown_duration:
-			can_navigate = true
-			navigation_cooldown_timer = 0.0
-
-func setup_gamepad_focus():
-	jump_button.focus_mode = Control.FOCUS_ALL
-	cancel_button.focus_mode = Control.FOCUS_ALL
-	
-	jump_button.focus_neighbor_bottom = jump_button.get_path_to(cancel_button)
-	cancel_button.focus_neighbor_top = cancel_button.get_path_to(jump_button)
-	
-	if map_canvas:
-		map_canvas.focus_mode = Control.FOCUS_ALL
-		map_canvas.focus_entered.connect(_on_map_focus_entered)
-		map_canvas.focus_exited.connect(_on_map_focus_exited)
-		
-		map_canvas.focus_neighbor_right = map_canvas.get_path_to(jump_button)
-		jump_button.focus_neighbor_left = jump_button.get_path_to(map_canvas)
-		cancel_button.focus_neighbor_left = cancel_button.get_path_to(map_canvas)
-
-func _on_map_focus_entered():
-	map_has_focus = true
-	if selected_system_id == -1 and available_system_ids.size() > 0:
-		system_index = 0
-		select_system(available_system_ids[system_index])
-
-func _on_map_focus_exited():
-	map_has_focus = false
-
-func load_systems_from_universe_data():
-	"""Load systems using integer IDs"""
-	print("Loading systems from universe data...")
-	
-	UniverseManager.ensure_all_systems_loaded()
-	
-	# Get systems data from UniverseManager (now with integer keys)
-	systems_data = UniverseManager.universe_data.get("systems", {})
-	
-	if systems_data.is_empty():
-		push_error("No systems data found in UniverseManager!")
-		return
-	
-	# Clear existing data
-	system_positions.clear()
-	system_connections.clear()
-	
-	var map_width = 480
-	var map_height = 500
-	var margin = 50
-	
-	# Load positions and connections using integer IDs
-	for system_id in systems_data:
-		var system_data = systems_data[system_id]
-		
-		# system_id is now an integer
-		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
-		var actual_position = Vector2(
-			margin + map_width * map_pos.x,
-			margin + map_height * map_pos.y
-		)
-		system_positions[system_id] = actual_position
-		
-		# Connections are now arrays of integers
-		var connections = system_data.get("connections", [])
-		system_connections[system_id] = connections
-		
-		print("Loaded system ID ", system_id, " (", system_data.name, ") at ", map_pos, " with ", connections.size(), " connections")
-	
-	print("Loaded ", systems_data.size(), " systems from universe data")
-	build_available_systems_list()
-
-func build_available_systems_list():
-	"""Build list of all system IDs for gamepad navigation"""
-	available_system_ids.clear()
-	
-	# Get all system IDs and sort them
-	for system_id in systems_data.keys():
-		available_system_ids.append(system_id)
-	
-	# Sort by system name for consistent order
-	available_system_ids.sort_custom(func(a, b): 
-		var name_a = systems_data[a].get("name", "")
-		var name_b = systems_data[b].get("name", "")
-		return name_a < name_b
-	)
-	
-	print("Available systems for navigation: ", available_system_ids)
-
 func setup_map_canvas():
+	"""Set up the zoomable/pannable map canvas in the left panel"""
 	if not left_panel:
-		print("ERROR: Left panel not found!")
+		push_error("Left panel not found!")
 		return
 	
 	map_canvas = Control.new()
@@ -168,8 +71,135 @@ func setup_map_canvas():
 	
 	map_canvas.draw.connect(_draw_map)
 	map_canvas.gui_input.connect(_on_map_input)
+	
+	print("Map canvas created")
 
-func _draw_map():
+func load_systems_from_database():
+	"""Load all systems and connections from SQLite database"""
+	print("Loading systems from SQLite database...")
+	
+	if not UniverseManager.db:
+		push_error("Database not available!")
+		return
+	
+	# Load all systems with their visual properties
+	var systems_query = """
+		SELECT 
+			id, name, x, y, map_size, map_color, is_hub, 
+			population, flavor_text
+		FROM systems 
+		ORDER BY name;
+	"""
+	
+	UniverseManager.db.query(systems_query)
+	var systems_results = UniverseManager.db.query_result
+	
+	systems_data.clear()
+	system_connections.clear()
+	
+	# Process each system
+	for system_row in systems_results:
+		var system_id = system_row.id
+		
+		var system_data = {
+			"id": system_id,
+			"name": system_row.name,
+			"x": float(system_row.x),
+			"y": float(system_row.y),
+			"map_size": float(system_row.map_size),
+			"map_color": system_row.map_color,
+			"is_hub": bool(system_row.is_hub),
+			"population": system_row.population,
+			"flavor_text": system_row.flavor_text if system_row.flavor_text else ""
+		}
+		
+		systems_data[system_id] = system_data
+		
+		# Load connections for this system
+		system_connections[system_id] = load_system_connections(system_id)
+	
+	print("Loaded ", systems_data.size(), " systems from database")
+	calculate_coordinate_bounds()
+
+func load_system_connections(system_id: int) -> Array[int]:
+	"""Load bidirectional connections for a specific system"""
+	# Get connections where this system is the source
+	var outbound_query = """
+		SELECT target_system_id
+		FROM system_connections
+		WHERE source_system_id = ?;
+	"""
+	
+	UniverseManager.db.query_with_bindings(outbound_query, [system_id])
+	var outbound_results = UniverseManager.db.query_result
+	
+	# Get connections where this system is the target (reverse direction)
+	var inbound_query = """
+		SELECT source_system_id
+		FROM system_connections
+		WHERE target_system_id = ?;
+	"""
+	
+	UniverseManager.db.query_with_bindings(inbound_query, [system_id])
+	var inbound_results = UniverseManager.db.query_result
+	
+	# Combine both directions and remove duplicates
+	var connections: Array[int] = []
+	var connection_set = {}
+	
+	# Add outbound connections
+	for row in outbound_results:
+		var target_id = row.target_system_id
+		if not connection_set.has(target_id):
+			connections.append(target_id)
+			connection_set[target_id] = true
+	
+	# Add inbound connections (reverse direction)
+	for row in inbound_results:
+		var source_id = row.source_system_id
+		if not connection_set.has(source_id):
+			connections.append(source_id)
+			connection_set[source_id] = true
+	
+	return connections
+
+func calculate_coordinate_bounds():
+	"""Calculate bounds of all system coordinates"""
+	if systems_data.is_empty():
+		return
+	
+	var min_x = INF
+	var max_x = -INF
+	var min_y = INF
+	var max_y = -INF
+	
+	for system_data in systems_data.values():
+		var x = system_data.x
+		var y = system_data.y
+		
+		min_x = min(min_x, x)
+		max_x = max(max_x, x)
+		min_y = min(min_y, y)
+		max_y = max(max_y, y)
+	
+	coord_bounds = {
+		"min_x": min_x,
+		"max_x": max_x,
+		"min_y": min_y,
+		"max_y": max_y,
+		"width": max_x - min_x,
+		"height": max_y - min_y
+	}
+	
+	print("Coordinate bounds: X(", min_x, " to ", max_x, ") Y(", min_y, " to ", max_y, ")")
+
+func setup_initial_view():
+	"""Set up initial view to show all systems"""
+	if systems_data.is_empty():
+		return
+	
+	await get_tree().process_frame  # Wait for canvas to be ready
+	
 	if not map_canvas:
 		return
 	
@@ -177,173 +207,280 @@ func _draw_map():
 	if canvas_size.x <= 0 or canvas_size.y <= 0:
 		return
 	
-	var margin = 20
-	var draw_area = Rect2(
-		Vector2(margin, margin),
-		canvas_size - Vector2(margin * 2, margin * 2)
+	# Calculate zoom to fit all systems with padding
+	var padding = 100.0
+	var zoom_x = (canvas_size.x - padding * 2) / coord_bounds.width
+	var zoom_y = (canvas_size.y - padding * 2) / coord_bounds.height
+	zoom_level = min(zoom_x, zoom_y) * 0.8  # 80% to leave some margin
+	
+	# Center the map
+	var viewport_center = canvas_size / 2
+	var map_center = Vector2(
+		coord_bounds.min_x + coord_bounds.width / 2,
+		-(coord_bounds.min_y + coord_bounds.height / 2)  # Flip Y
 	)
 	
-	var scaled_positions = scale_system_positions_to_area(draw_area)
+	pan_offset = viewport_center - map_center * zoom_level
 	
-	# Draw connection lines using integer IDs
-	for system_id in system_connections:
-		if system_id in scaled_positions:
-			var system_pos = scaled_positions[system_id]
-			var connections = system_connections[system_id]
-			
-			for connected_id in connections:
-				if connected_id in scaled_positions:
-					var connected_pos = scaled_positions[connected_id]
-					map_canvas.draw_line(system_pos, connected_pos, line_color, line_width)
-	
-	# Draw systems
-	for system_id in scaled_positions:
-		var pos = scaled_positions[system_id]
-		var color = system_color
-		
-		# Color coding using integer IDs
-		if system_id == current_system_id:
-			color = current_system_color
-		elif system_id == selected_system_id:
-			color = selected_system_color
-		elif not can_travel_to(system_id):
-			color = unavailable_color
-		
-		map_canvas.draw_circle(pos, system_radius, color)
-		
-		# Focus ring for selected system
-		if system_id == selected_system_id and map_has_focus:
-			map_canvas.draw_arc(pos, system_radius + 4, 0, TAU, 32, Color.WHITE, 2.0)
-		
-		# System name
-		var system_name = get_system_name(system_id)
-		var font = ThemeDB.fallback_font
-		var font_size = 16
-		var text_size = font.get_string_size(system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-		var text_pos = pos + Vector2(-text_size.x / 2, system_radius + 20)
-		
-		text_pos.x = clamp(text_pos.x, draw_area.position.x, draw_area.position.x + draw_area.size.x - text_size.x)
-		text_pos.y = clamp(text_pos.y, draw_area.position.y + font_size, draw_area.position.y + draw_area.size.y)
-		
-		map_canvas.draw_string(font, text_pos, system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, color)
-	
-	# Controller instructions
-	if map_has_focus:
-		var font = ThemeDB.fallback_font
-		var instruction_text = "D-pad/Stick: Select System  |  A: Confirm  |  →: Jump Options"
-		var instruction_size = font.get_string_size(instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
-		var instruction_pos = Vector2((canvas_size.x - instruction_size.x) / 2, canvas_size.y - 10)
-		map_canvas.draw_string(font, instruction_pos, instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.YELLOW)
+	print("Initial view - Zoom: ", zoom_level, " Pan: ", pan_offset)
+	queue_redraw()
 
-func scale_system_positions_to_area(draw_area: Rect2) -> Dictionary:
-	"""Scale positions maintaining integer keys"""
-	var scaled_positions = {}
-	
-	if system_positions.is_empty():
-		return scaled_positions
-	
-	var min_pos = Vector2(INF, INF)
-	var max_pos = Vector2(-INF, -INF)
-	
-	for pos in system_positions.values():
-		min_pos.x = min(min_pos.x, pos.x)
-		min_pos.y = min(min_pos.y, pos.y)
-		max_pos.x = max(max_pos.x, pos.x)
-		max_pos.y = max(max_pos.y, pos.y)
-	
-	var original_size = max_pos - min_pos
-	if original_size.x == 0: original_size.x = 1
-	if original_size.y == 0: original_size.y = 1
-	
-	var text_padding = 40
-	var available_size = draw_area.size - Vector2(text_padding, text_padding)
-	var scale = min(available_size.x / original_size.x, available_size.y / original_size.y)
-	
-	var scaled_size = original_size * scale
-	var offset = draw_area.position + (draw_area.size - scaled_size) / 2
-	
-	# Scale each system position (maintaining integer keys)
-	for system_id in system_positions:
-		var original_pos = system_positions[system_id]
-		var relative_pos = (original_pos - min_pos) * scale
-		scaled_positions[system_id] = offset + relative_pos
-	
-	return scaled_positions
-
-func _on_map_input(event):
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			var clicked_system_id = get_system_at_position(event.position)
-			if clicked_system_id != -1:
-				select_system(clicked_system_id)
-
-func get_system_at_position(pos: Vector2) -> int:
-	"""Find system ID at mouse position"""
-	if not map_canvas:
-		return -1
+func _draw_map():
+	"""Draw the hyperspace map with zoom/pan support"""
+	if not map_canvas or systems_data.is_empty():
+		return
 	
 	var canvas_size = map_canvas.size
-	var margin = 20
-	var draw_area = Rect2(
-		Vector2(margin, margin),
-		canvas_size - Vector2(margin * 2, margin * 2)
-	)
+	if canvas_size.x <= 0 or canvas_size.y <= 0:
+		return
 	
-	var scaled_positions = scale_system_positions_to_area(draw_area)
+	# Draw connections first (behind systems)
+	draw_connections()
 	
-	for system_id in scaled_positions:
-		var system_pos = scaled_positions[system_id]
-		var distance = pos.distance_to(system_pos)
-		if distance <= system_radius + 10:
-			return system_id
+	# Draw systems
+	draw_systems()
+	
+	# Draw instructions
+	draw_instructions(canvas_size)
+
+func draw_connections():
+	"""Draw hyperspace connections between systems"""
+	for system_id in system_connections:
+		if not systems_data.has(system_id):
+			continue
+			
+		var system_data = systems_data[system_id]
+		var system_screen_pos = world_to_screen(Vector2(system_data.x, system_data.y))
+		
+		# Skip if system is far off screen
+		if not is_point_on_screen(system_screen_pos, 200):
+			continue
+		
+		var connections = system_connections[system_id]
+		for connected_id in connections:
+			if not systems_data.has(connected_id):
+				continue
+				
+			var connected_data = systems_data[connected_id]
+			var connected_screen_pos = world_to_screen(Vector2(connected_data.x, connected_data.y))
+			
+			# Skip if connection is completely off screen
+			if not is_line_on_screen(system_screen_pos, connected_screen_pos):
+				continue
+			
+			# Draw connection line
+			var width = connection_width * max(0.5, zoom_level)
+			map_canvas.draw_line(system_screen_pos, connected_screen_pos, connection_color, width)
+
+func draw_systems():
+	"""Draw all star systems"""
+	for system_id in systems_data:
+		var system_data = systems_data[system_id]
+		var world_pos = Vector2(system_data.x, system_data.y)
+		var screen_pos = world_to_screen(world_pos)
+		
+		# Cull off-screen systems
+		var base_radius = system_base_size * system_data.map_size * max(0.3, zoom_level)
+		if not is_point_on_screen(screen_pos, base_radius + 50):
+			continue
+		
+		# Calculate visual properties
+		var final_radius = base_radius
+		var final_color = get_system_color(system_data)
+		
+		# Apply selection highlighting
+		if system_id == current_system_id:
+			final_color = current_system_color
+			final_radius *= 1.2
+		elif system_id == selected_system_id:
+			final_color = selected_system_color
+			final_radius *= 1.1
+		elif not can_travel_to(system_id):
+			final_color = unavailable_color
+		
+		# Draw system circle
+		map_canvas.draw_circle(screen_pos, final_radius, final_color)
+		
+		# Draw border for hubs
+		if system_data.is_hub:
+			map_canvas.draw_arc(screen_pos, final_radius + 2, 0, TAU, 32, Color.WHITE, 2.0)
+		
+		# Draw system name if zoomed in enough
+		if zoom_level > 0.5:
+			draw_system_label(screen_pos, system_data.name, final_radius)
+
+func draw_system_label(screen_pos: Vector2, system_name: String, radius: float):
+	"""Draw system name label"""
+	var font = ThemeDB.fallback_font
+	var font_size = int(12 * max(0.8, zoom_level))
+	var text_size = font.get_string_size(system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+	var text_pos = screen_pos + Vector2(-text_size.x / 2, radius + 20)
+	
+	# Keep text on screen
+	var canvas_size = map_canvas.size
+	text_pos.x = clamp(text_pos.x, 0, canvas_size.x - text_size.x)
+	text_pos.y = clamp(text_pos.y, font_size, canvas_size.y)
+	
+	# Draw text with shadow
+	map_canvas.draw_string(font, text_pos + Vector2(1, 1), system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.BLACK)
+	map_canvas.draw_string(font, text_pos, system_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
+
+func draw_instructions(canvas_size: Vector2):
+	"""Draw control instructions"""
+	var font = ThemeDB.fallback_font
+	var instruction_text = "Mouse Wheel: Zoom  |  Middle Click + Drag: Pan  |  Left Click: Select System"
+	var instruction_size = font.get_string_size(instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
+	var instruction_pos = Vector2((canvas_size.x - instruction_size.x) / 2, canvas_size.y - 15)
+	
+	map_canvas.draw_string(font, instruction_pos + Vector2(1, 1), instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.BLACK)
+	map_canvas.draw_string(font, instruction_pos, instruction_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.YELLOW)
+
+func get_system_color(system_data: Dictionary) -> Color:
+	"""Get system color from map_color property or default based on system type"""
+	var color_str = system_data.get("map_color", "#FFFFFF")
+	
+	# Parse hex color
+	if color_str.begins_with("#") and color_str.length() >= 7:
+		return Color.html(color_str)
+	
+	# Fallback colors based on system properties
+	if system_data.is_hub:
+		return Color.CYAN
+	elif system_data.population > 1000000:
+		return Color.GREEN
+	else:
+		return Color.WHITE
+
+# =============================================================================
+# COORDINATE CONVERSION (from test)
+# =============================================================================
+
+func screen_to_world(screen_pos: Vector2) -> Vector2:
+	"""Convert screen coordinates to world coordinates"""
+	var world_pos = (screen_pos - pan_offset) / zoom_level
+	# Flip Y coordinate back when converting to world space
+	return Vector2(world_pos.x, -world_pos.y)
+
+func world_to_screen(world_pos: Vector2) -> Vector2:
+	"""Convert world coordinates to screen coordinates"""
+	# Flip Y coordinate to match display system
+	var flipped_world_pos = Vector2(world_pos.x, -world_pos.y)
+	return flipped_world_pos * zoom_level + pan_offset
+
+# =============================================================================
+# MOUSE INTERACTION (adapted from test)
+# =============================================================================
+
+func _on_map_input(event):
+	"""Handle mouse input on the map canvas"""
+	if event is InputEventMouseButton:
+		handle_mouse_button(event)
+	elif event is InputEventMouseMotion:
+		handle_mouse_motion(event)
+
+func handle_mouse_button(event: InputEventMouseButton):
+	"""Handle mouse button events"""
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		zoom_at_point(event.position, 1.2)
+	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		zoom_at_point(event.position, 0.8)
+	elif event.button_index == MOUSE_BUTTON_MIDDLE:
+		is_panning = event.pressed
+		last_pan_position = event.position
+	elif event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		handle_system_click(event.position)
+
+func handle_mouse_motion(event: InputEventMouseMotion):
+	"""Handle mouse motion for panning"""
+	if is_panning:
+		pan_offset += event.position - last_pan_position
+		last_pan_position = event.position
+		map_canvas.queue_redraw()
+
+func zoom_at_point(screen_point: Vector2, zoom_factor: float):
+	"""Zoom in/out at specific screen point"""
+	var world_point = screen_to_world(screen_point)
+	
+	zoom_level *= zoom_factor
+	zoom_level = clamp(zoom_level, 0.05, 5.0)
+	
+	# Adjust pan to keep world point under screen point
+	var new_screen_point = world_to_screen(world_point)
+	pan_offset += screen_point - new_screen_point
+	
+	map_canvas.queue_redraw()
+
+func handle_system_click(click_position: Vector2):
+	"""Handle clicking on systems"""
+	var clicked_system_id = get_system_at_position(click_position)
+	
+	if clicked_system_id != -1:
+		select_system(clicked_system_id)
+
+func get_system_at_position(screen_pos: Vector2) -> int:
+	"""Find system at screen position"""
+	var world_pos = screen_to_world(screen_pos)
+	var min_distance = INF
+	var closest_system_id = -1
+	
+	for system_id in systems_data:
+		var system_data = systems_data[system_id]
+		var system_world_pos = Vector2(system_data.x, system_data.y)
+		var distance = world_pos.distance_to(system_world_pos)
+		
+		if distance < min_distance:
+			min_distance = distance
+			closest_system_id = system_id
+	
+	# Check if click is within reasonable distance
+	if closest_system_id != -1:
+		var system_data = systems_data[closest_system_id]
+		var threshold = (system_base_size * system_data.map_size + 10) / zoom_level
+		
+		if min_distance <= threshold:
+			return closest_system_id
 	
 	return -1
 
-func navigate_systems(direction: int):
-	"""Navigate through systems using integer IDs"""
-	if not can_navigate:
-		return
+# =============================================================================
+# UTILITY FUNCTIONS (from test)
+# =============================================================================
+
+func is_point_on_screen(point: Vector2, margin: float = 0) -> bool:
+	"""Check if point is visible on screen"""
+	var canvas_size = map_canvas.size
+	return point.x >= -margin and point.x <= canvas_size.x + margin and \
+		   point.y >= -margin and point.y <= canvas_size.y + margin
+
+func is_line_on_screen(p1: Vector2, p2: Vector2, margin: float = 100) -> bool:
+	"""Check if line segment intersects with screen"""
+	var canvas_size = map_canvas.size
+	var screen_rect = Rect2(-margin, -margin, canvas_size.x + margin * 2, canvas_size.y + margin * 2)
 	
-	if available_system_ids.is_empty():
-		return
-	
-	if system_index < 0:
-		system_index = 0
-	else:
-		system_index = (system_index + direction) % available_system_ids.size()
-		if system_index < 0:
-			system_index = available_system_ids.size() - 1
-	
-	var new_system_id = available_system_ids[system_index]
-	select_system(new_system_id)
-	
-	can_navigate = false
-	navigation_cooldown_timer = 0.0
-	
-	var system_name = get_system_name(new_system_id)
-	print("Selected: ", system_name, " (ID: ", new_system_id, ") - ", system_index + 1, "/", available_system_ids.size())
+	return screen_rect.has_point(p1) or screen_rect.has_point(p2) or \
+		   (p1.x < 0 and p2.x > canvas_size.x) or (p1.y < 0 and p2.y > canvas_size.y)
+
+# =============================================================================
+# SYSTEM SELECTION & UI (existing functionality)
+# =============================================================================
 
 func select_system(system_id: int):
-	"""Select system by integer ID"""
+	"""Select system and update UI"""
 	selected_system_id = system_id
-	
-	# Update system index for controller navigation
-	system_index = available_system_ids.find(system_id)
-	if system_index < 0:
-		system_index = 0
-	
 	update_ui()
-	if map_canvas:
-		map_canvas.queue_redraw()
+	map_canvas.queue_redraw()
+	
+	var system_name = get_system_name(system_id)
+	print("Selected system: ", system_name, " (ID: ", system_id, ")")
 
 func update_ui():
-	"""Update UI with system information"""
+	"""Update right panel with system information"""
 	var flavor_text = ""
 	
 	if selected_system_id == -1:
 		info_label.text = "Select a destination system"
 		jump_button.disabled = true
-		flavor_text = "Navigate the galaxy using the hyperspace network."
+		flavor_text = "Navigate the galaxy using the hyperspace network.\n\nUse mouse wheel to zoom and middle-click + drag to pan around the map."
 	elif selected_system_id == current_system_id:
 		var system_name = get_system_name(selected_system_id)
 		info_label.text = "Current location: " + system_name
@@ -363,24 +500,53 @@ func update_ui():
 	if flavor_label:
 		flavor_label.text = flavor_text
 
-func get_system_flavor(system_id: int) -> String:
-	"""Get flavor text by system ID"""
-	var system_data = systems_data.get(system_id, {})
-	return system_data.get("flavor_text", "No information available about this system.")
-
 func get_system_name(system_id: int) -> String:
 	"""Get system name by ID"""
-	var system_data = systems_data.get(system_id, {})
-	return system_data.get("name", "Unknown System")
+	if systems_data.has(system_id):
+		return systems_data[system_id].name
+	return "Unknown System"
+
+func get_system_flavor(system_id: int) -> String:
+	"""Get system flavor text"""
+	if systems_data.has(system_id):
+		var flavor = systems_data[system_id].flavor_text
+		return flavor if flavor != "" else "No information available about this system."
+	return "No information available about this system."
 
 func can_travel_to(system_id: int) -> bool:
-	"""Check if travel is possible using integer IDs"""
+	"""Check if travel is possible to system"""
 	if current_system_id == -1:
 		return false
 	var connections = system_connections.get(current_system_id, [])
 	return system_id in connections
 
+# =============================================================================
+# MAIN INTERFACE (existing)
+# =============================================================================
+
+func show_map():
+	"""Show the hyperspace map"""
+	load_systems_from_database()
+	current_system_id = UniverseManager.current_system_id
+	selected_system_id = -1
+	
+	update_ui()
+	visible = true
+	get_tree().paused = true
+	
+	await get_tree().process_frame
+	
+	if map_canvas:
+		map_canvas.queue_redraw()
+
+func hide_map():
+	"""Hide the hyperspace map"""
+	visible = false
+	get_tree().paused = false
+	selected_system_id = -1
+
 func _on_jump_pressed():
+	"""Handle jump button press"""
 	if selected_system_id != -1 and can_travel_to(selected_system_id):
 		var player_ship = UniverseManager.player_ship
 		if player_ship and player_ship.has_method("start_hyperspace_sequence"):
@@ -391,78 +557,29 @@ func _on_jump_pressed():
 			hide_map()
 
 func _on_cancel_pressed():
+	"""Handle cancel button press"""
 	hide_map()
 
-func show_map():
-	load_systems_from_universe_data()
-	current_system_id = UniverseManager.current_system_id
-	selected_system_id = -1
-	system_index = -1
-	
-	input_delay_timer = 0.0
-	can_accept_input = false
-	navigation_cooldown_timer = 0.0
-	can_navigate = true
-	
-	update_ui()
-	visible = true
-	get_tree().paused = true
-	
-	await get_tree().process_frame
-	
-	if map_canvas:
-		map_canvas.grab_focus()
-		map_canvas.queue_redraw()
-
-func hide_map():
-	visible = false
-	get_tree().paused = false
-	
-	map_has_focus = false
-	selected_system_id = -1
-	system_index = -1
-
 func _input(event):
-	if not visible or not can_accept_input:
-		if event.is_action_pressed("ui_cancel"):
-			hide_map()
-			get_viewport().set_input_as_handled()
+	"""Handle global input when map is visible"""
+	if not visible:
 		return
-	
-	if map_has_focus:
-		if event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down"):
-			var direction = 1 if event.is_action_pressed("ui_down") else -1
-			navigate_systems(direction)
-			get_viewport().set_input_as_handled()
-		
-		elif event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
-			var direction = 1 if event.is_action_pressed("ui_right") else -1
-			navigate_systems(direction)
-			get_viewport().set_input_as_handled()
-		
-		elif event.is_action_pressed("ui_accept"):
-			if selected_system_id != -1 and can_travel_to(selected_system_id):
-				_on_jump_pressed()
-			elif selected_system_id != -1:
-				jump_button.grab_focus()
-			get_viewport().set_input_as_handled()
 	
 	if event.is_action_pressed("ui_cancel"):
 		hide_map()
 		get_viewport().set_input_as_handled()
-	
-	elif event.is_action_pressed("ui_accept"):
-		var focused_control = get_viewport().gui_get_focus_owner()
-		if focused_control == jump_button:
-			_on_jump_pressed()
-		elif focused_control == cancel_button:
-			_on_cancel_pressed()
-		get_viewport().set_input_as_handled()
 
 # =============================================================================
-# COMPATIBILITY METHODS
+# DEBUG METHODS
 # =============================================================================
 
-func get_system_positions() -> Dictionary:
-	"""Return system positions for compatibility"""
-	return system_positions
+func debug_print_map_info():
+	"""Print debug information about the map"""
+	print("=== HYPERSPACE MAP DEBUG ===")
+	print("Systems loaded: ", systems_data.size())
+	print("Current system: ", current_system_id)
+	print("Selected system: ", selected_system_id)
+	print("Coordinate bounds: ", coord_bounds)
+	print("Zoom level: ", zoom_level)
+	print("Pan offset: ", pan_offset)
+	print("===========================")

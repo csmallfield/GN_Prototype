@@ -51,14 +51,14 @@ uniform bool show_outer_areas = true;
 // Helper function with inner/outer radius support
 vec2 apply_control_point_advanced(vec2 uv, vec2 control_pos, vec2 scale, vec2 translation, float inner_radius, float outer_radius, float falloff) {
     if (outer_radius <= 0.0) return uv;
-    
+
     float dist = distance(uv, control_pos);
-    
+
     // No influence beyond outer radius
     if (dist > outer_radius) return uv;
-    
+
     float influence;
-    
+
     // Full influence within inner radius (protected area)
     if (dist <= inner_radius) {
         influence = 1.0;
@@ -73,23 +73,23 @@ vec2 apply_control_point_advanced(vec2 uv, vec2 control_pos, vec2 scale, vec2 tr
             influence = 1.0; // If inner == outer, full influence
         }
     }
-    
+
     // Calculate deformation relative to control point
     vec2 offset_from_control = uv - control_pos;
-    
+
     // Apply scaling
     vec2 scaled_offset = offset_from_control * mix(vec2(1.0), scale, influence);
-    
+
     // Apply translation
     vec2 translated_offset = scaled_offset + translation * influence;
-    
+
     // Return deformed position
     return control_pos + translated_offset;
 }
 
 vec2 apply_all_deformations(vec2 uv) {
     vec2 final_uv = uv;
-    
+
     // Apply each control point with inner/outer radius
     final_uv = apply_control_point_advanced(final_uv, left_eye_center, left_eye_scale, left_eye_translation, eye_inner_radius, eye_outer_radius, eye_falloff);
     final_uv = apply_control_point_advanced(final_uv, right_eye_center, right_eye_scale, right_eye_translation, eye_inner_radius, eye_outer_radius, eye_falloff);
@@ -97,16 +97,16 @@ vec2 apply_all_deformations(vec2 uv) {
     final_uv = apply_control_point_advanced(final_uv, nose_tip, nose_scale, nose_translation, nose_inner_radius, nose_outer_radius, nose_falloff);
     final_uv = apply_control_point_advanced(final_uv, left_ear, left_ear_scale, left_ear_translation, ear_inner_radius, ear_outer_radius, ear_falloff);
     final_uv = apply_control_point_advanced(final_uv, right_ear, right_ear_scale, right_ear_translation, ear_inner_radius, ear_outer_radius, ear_falloff);
-    
+
     return final_uv;
 }
 
 void fragment() {
     vec2 deformed_uv = apply_all_deformations(UV);
-    
+
     // Sample the texture at deformed coordinates
     vec4 tex_color = texture(TEXTURE, deformed_uv);
-    
+
     // Debug visualization
     if (show_control_points || show_inner_areas || show_outer_areas) {
         // Define control points and their properties for debug rendering
@@ -114,15 +114,15 @@ void fragment() {
         float inner_radii[6] = float[](eye_inner_radius, eye_inner_radius, mouth_inner_radius, nose_inner_radius, ear_inner_radius, ear_inner_radius);
         float outer_radii[6] = float[](eye_outer_radius, eye_outer_radius, mouth_outer_radius, nose_outer_radius, ear_outer_radius, ear_outer_radius);
         vec3 colors[6] = vec3[](vec3(1.0, 0.3, 0.3), vec3(1.0, 0.3, 0.3), vec3(0.3, 1.0, 0.3), vec3(0.3, 0.3, 1.0), vec3(1.0, 1.0, 0.3), vec3(1.0, 1.0, 0.3));
-        
+
         for (int i = 0; i < 6; i++) {
             float dist_to_point = distance(UV, points[i]);
-            
+
             // Draw control point dots
             if (show_control_points && dist_to_point < point_size) {
                 tex_color = mix(tex_color, vec4(colors[i], 1.0), 0.9);
             }
-            
+
             // Draw inner radius circles (solid protected area)
             if (show_inner_areas && inner_radii[i] > 0.0) {
                 float inner_edge = abs(dist_to_point - inner_radii[i]);
@@ -134,7 +134,7 @@ void fragment() {
                     tex_color = mix(tex_color, vec4(colors[i], 0.1), 0.3);
                 }
             }
-            
+
             // Draw outer radius circles (falloff boundary)
             if (show_outer_areas && outer_radii[i] > 0.0) {
                 float outer_edge = abs(dist_to_point - outer_radii[i]);
@@ -153,6 +153,6 @@ void fragment() {
             }
         }
     }
-    
+
     COLOR = tex_color;
 }

@@ -115,6 +115,27 @@ func can_travel_to_system(system_id: int) -> bool:
 	"""Check if travel is possible to system by ID"""
 	var connections = get_system_connections(current_system_id)
 	return system_id in connections
+	
+# Add this method to SQLiteUniverseManager.gd
+func get_system_display_position(system_id: int) -> Vector2:
+	"""Get system position with Y-axis flipped to match hyperspace map display"""
+	var systems_query = """
+		SELECT x, y FROM systems WHERE id = ?;
+	"""
+	
+	db.query_with_bindings(systems_query, [system_id])
+	var results = db.query_result
+	
+	if results.is_empty():
+		return Vector2.ZERO
+	
+	var system_row = results[0]
+	# Return position with Y-flipped to match hyperspace map orientation
+	return Vector2(float(system_row.x), -float(system_row.y))
+
+func get_current_system_display_position() -> Vector2:
+	"""Get current system position with display correction"""
+	return get_system_display_position(current_system_id)
 
 # =============================================================================
 # NAME LOOKUP HELPERS - For display only
