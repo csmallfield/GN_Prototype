@@ -103,7 +103,8 @@ func spawn_celestial_bodies(bodies_data: Array):
 		if body_data.has("scale") and body_data.get("type") == "planet":
 			celestial_body.scale = Vector2(body_data.scale, body_data.scale)
 		
-		celestial_bodies_container.add_child(celestial_body)
+		# Use call_deferred to avoid physics timing issues
+		celestial_bodies_container.call_deferred("add_child", celestial_body)
 		spawned_count += 1
 	
 	if spawned_count == 0:
