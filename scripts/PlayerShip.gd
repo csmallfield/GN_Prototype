@@ -725,16 +725,16 @@ func debug_test_mission_system():
 	print("Testing PlayerData...")
 	PlayerData.debug_print_status()
 	
-	# Test MissionGenerator
-	print("Testing MissionGenerator...")
-	MissionGenerator.debug_print_all_destinations()
+	# Test MissionGenerator with new pathfinding system
+	print("Testing MissionGenerator with pathfinding...")
+	MissionGenerator.debug_test_distance_distribution()
 	
 	# Test system missions
 	print("Testing current system missions...")
 	var current_system = UniverseManager.get_current_system()
 	print("Current system: ", current_system.get("name", "Unknown"))
 	
-	# FIXED: Get first landable planet in current system for testing
+	# Get first landable planet in current system for testing
 	var celestial_bodies = current_system.get("celestial_bodies", [])
 	var test_planet_id = -1
 	var test_planet_name = "Unknown"
@@ -752,6 +752,11 @@ func debug_test_mission_system():
 			print("  - ", MissionGenerator.get_mission_description(mission))
 	else:
 		print("No landable planets found in current system for testing")
+	
+	# Test pathfinding specifically
+	print("Testing pathfinding system...")
+	var current_system_id = UniverseManager.current_system_id
+	UniverseManager.debug_distance_distribution(current_system_id)
 	
 	print("=== MISSION SYSTEM TEST COMPLETE ===")
 	print("Press F12 again to test, L to land on planets")

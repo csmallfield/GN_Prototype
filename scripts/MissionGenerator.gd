@@ -1,5 +1,5 @@
 # =============================================================================
-# MISSION GENERATOR - Integer ID System (Fixed)
+# MISSION GENERATOR - Pathfinding-Based Distance System
 # =============================================================================
 # MissionGenerator.gd
 extends RefCounted
@@ -13,6 +13,11 @@ const MAX_CARGO_WEIGHT = 75
 const BASE_PAYMENT_PER_JUMP = 2000
 const WEIGHT_PAYMENT_MODIFIER = 0.8
 
+# Distance distribution settings (75% / 20% / 5%)
+const CLOSE_RANGE_CHANCE = 0.75    # 1-5 jumps
+const MEDIUM_RANGE_CHANCE = 0.20   # 6-10 jumps  
+const LONG_RANGE_CHANCE = 0.05     # 11-20 jumps
+
 const CARGO_TYPES = [
 	"Generic Cargo",
 	"Manufactured Goods", 
@@ -25,7 +30,7 @@ const CARGO_TYPES = [
 ]
 
 static func generate_missions_for_planet(origin_planet_data: Dictionary, origin_system_id: int) -> Array[Dictionary]:
-	"""Generate missions using integer system ID"""
+	"""Generate missions using pathfinding-based distance system"""
 	var missions: Array[Dictionary] = []
 	var num_missions = randi_range(MIN_MISSIONS_PER_PLANET, MAX_MISSIONS_PER_PLANET)
 	
@@ -33,44 +38,74 @@ static func generate_missions_for_planet(origin_planet_data: Dictionary, origin_
 	var system_name = UniverseManager.get_system_name(origin_system_id)
 	print("Generating ", num_missions, " missions for ", planet_name, " in ", system_name, " (ID: ", origin_system_id, ")")
 	
-	# Get all possible destinations
-	var destinations = get_all_landable_destinations()
-	if destinations.is_empty():
-		push_error("No destinations found for mission generation")
+	# Get destinations grouped by distance ranges
+	var destination_pools = get_destination_pools_by_distance(origin_system_id, origin_planet_data.get("id", -1))
+	
+	if are_all_pools_empty(destination_pools):
+		print("No destinations found for mission generation")
 		return missions
 	
-	# Remove origin planet from destinations using integer IDs
-	var origin_planet_id = origin_planet_data.get("id", -1)
-	destinations = destinations.filter(func(dest): 
-		return not (dest.planet_id == origin_planet_id and dest.system_id == origin_system_id)
-	)
-	
-	if destinations.is_empty():
-		print("No valid destinations after filtering origin")
-		return missions
-	
-	# Generate missions
+	# Generate missions with proper distance distribution
 	for i in range(num_missions):
-		var mission = generate_single_mission(origin_planet_data, origin_system_id, destinations)
+		var mission = generate_single_mission_with_distribution(origin_planet_data, origin_system_id, destination_pools)
 		if not mission.is_empty():
 			missions.append(mission)
 	
 	print("Generated ", missions.size(), " missions successfully")
 	return missions
 
-static func generate_single_mission(origin_planet_data: Dictionary, origin_system_id: int, destinations: Array[Dictionary]) -> Dictionary:
-	"""Generate single mission using integer IDs"""
-	if destinations.is_empty():
+static func get_destination_pools_by_distance(origin_system_id: int, origin_planet_id: int) -> Dictionary:
+	"""Get destination pools organized by distance ranges"""
+	var pools = {
+		"close": [],    # 1-5 jumps
+		"medium": [],   # 6-10 jumps
+		"long": []      # 11-20 jumps
+	}
+	
+	# Get destinations from each range
+	pools.close = UniverseManager.get_landable_destinations_by_distance(origin_system_id, 1, 5)
+	pools.medium = UniverseManager.get_landable_destinations_by_distance(origin_system_id, 6, 10)
+	pools.long = UniverseManager.get_landable_destinations_by_distance(origin_system_id, 11, 20)
+	
+	# Remove origin planet from all pools
+	remove_origin_from_pools(pools, origin_planet_id, origin_system_id)
+	
+	print("Destination pools - Close: ", pools.close.size(), " Medium: ", pools.medium.size(), " Long: ", pools.long.size())
+	return pools
+
+static func remove_origin_from_pools(pools: Dictionary, origin_planet_id: int, origin_system_id: int):
+	"""Remove origin planet from all destination pools"""
+	for pool_name in pools.keys():
+		var pool = pools[pool_name]
+		for i in range(pool.size() - 1, -1, -1):
+			var dest = pool[i]
+			if dest.planet_id == origin_planet_id and dest.system_id == origin_system_id:
+				pool.remove_at(i)
+
+static func are_all_pools_empty(pools: Dictionary) -> bool:
+	"""Check if all destination pools are empty"""
+	return pools.close.is_empty() and pools.medium.is_empty() and pools.long.is_empty()
+
+static func generate_single_mission_with_distribution(origin_planet_data: Dictionary, origin_system_id: int, destination_pools: Dictionary) -> Dictionary:
+	"""Generate single mission using distance distribution rules"""
+	
+	# Select destination pool based on distribution percentages
+	var destination_pool = select_destination_pool(destination_pools)
+	if destination_pool.is_empty():
+		print("Selected destination pool is empty")
 		return {}
 	
-	var destination = destinations[randi() % destinations.size()]
+	# Randomly select destination from chosen pool
+	var destination = destination_pool[randi() % destination_pool.size()]
 	
 	# Generate cargo details
 	var cargo_type = CARGO_TYPES[randi() % CARGO_TYPES.size()]
 	var cargo_weight = randi_range(MIN_CARGO_WEIGHT, MAX_CARGO_WEIGHT)
 	
-	# Calculate payment based on distance using integer IDs
-	var jump_distance = calculate_jump_distance(origin_system_id, destination.system_id)
+	# Get actual jump distance (already calculated and cached)
+	var jump_distance = destination.jump_distance
+	
+	# Calculate payment based on actual distance
 	var base_payment = BASE_PAYMENT_PER_JUMP * jump_distance
 	var weight_bonus = int(cargo_weight * WEIGHT_PAYMENT_MODIFIER)
 	var total_payment = base_payment + weight_bonus
@@ -82,12 +117,12 @@ static func generate_single_mission(origin_planet_data: Dictionary, origin_syste
 	var mission = {
 		"cargo_type": cargo_type,
 		"cargo_weight": cargo_weight,
-		"origin_planet": origin_planet_data.get("id", -1),  # Integer ID
-		"origin_system": origin_system_id,  # Integer ID
-		"destination_planet": destination.planet_id,  # Integer ID
-		"destination_system": destination.system_id,  # Integer ID
-		"destination_planet_name": destination.planet_name,  # Name for display
-		"destination_system_name": destination.system_name,  # Name for display
+		"origin_planet": origin_planet_data.get("id", -1),
+		"origin_system": origin_system_id,
+		"destination_planet": destination.planet_id,
+		"destination_system": destination.system_id,
+		"destination_planet_name": destination.planet_name,
+		"destination_system_name": destination.system_name,
 		"payment": total_payment,
 		"jump_distance": jump_distance
 	}
@@ -96,89 +131,74 @@ static func generate_single_mission(origin_planet_data: Dictionary, origin_syste
 	
 	return mission
 
+static func select_destination_pool(pools: Dictionary) -> Array:
+	"""Select destination pool based on distribution percentages"""
+	var random_value = randf()
+	
+	# Try close range first (75% chance)
+	if random_value < CLOSE_RANGE_CHANCE and not pools.close.is_empty():
+		print("Selected close range destination (1-5 jumps)")
+		return pools.close
+	
+	# Try medium range (20% chance)
+	elif random_value < CLOSE_RANGE_CHANCE + MEDIUM_RANGE_CHANCE and not pools.medium.is_empty():
+		print("Selected medium range destination (6-10 jumps)")
+		return pools.medium
+	
+	# Try long range (5% chance)
+	elif not pools.long.is_empty():
+		print("Selected long range destination (11-20 jumps)")
+		return pools.long
+	
+	# Fallback: use any available pool if selected pool is empty
+	print("Selected pool was empty, using fallback...")
+	if not pools.close.is_empty():
+		return pools.close
+	elif not pools.medium.is_empty():
+		return pools.medium
+	elif not pools.long.is_empty():
+		return pools.long
+	
+	# No destinations available
+	return []
+
+# =============================================================================
+# LEGACY COMPATIBILITY - These methods are now deprecated but kept for compatibility
+# =============================================================================
+
 static func get_all_landable_destinations() -> Array[Dictionary]:
-	"""Get all landable destinations using integer IDs"""
-	var destinations: Array[Dictionary] = []
+	"""Legacy method - now redirects to use pathfinding system"""
+	print("Warning: get_all_landable_destinations() is deprecated. Using pathfinding system instead.")
 	
-	# Ensure all systems are loaded
-	UniverseManager.ensure_all_systems_loaded()
-	
-	if not UniverseManager.universe_data.has("systems"):
-		push_error("No universe data available")
-		return destinations
-	
-	var systems = UniverseManager.universe_data.systems
-	
-	# systems now has integer keys - iterate properly
-	for system_id in systems.keys():
-		# system_id is now an integer
-		var system_data = systems[system_id]
-		var system_name = system_data.get("name", "Unknown System")
-		var celestial_bodies = system_data.get("celestial_bodies", [])
-		
-		for body in celestial_bodies:
-			if body.get("can_land", false):
-				var destination = {
-					"system_id": system_id,  # Integer ID
-					"system_name": system_name,  # Name for display
-					"planet_id": body.get("id", -1),  # Integer ID - body.id is now integer from database
-					"planet_name": body.get("name", "Unknown"),  # Name for display
-					"planet_type": body.get("type", "unknown")
-				}
-				destinations.append(destination)
-	
-	print("Found ", destinations.size(), " landable destinations across all systems")
-	return destinations
+	# Get destinations from current system within reasonable range
+	var current_system_id = UniverseManager.current_system_id
+	return UniverseManager.get_landable_destinations_by_distance(current_system_id, 1, 20)
 
 static func calculate_jump_distance(origin_system_id: int, destination_system_id: int) -> int:
-	"""Calculate jump distance between systems using integer IDs"""
-	if origin_system_id == destination_system_id:
-		return 0
-	
-	var system_positions = get_system_positions()
-	
-	if not system_positions.has(origin_system_id) or not system_positions.has(destination_system_id):
-		push_warning("System not found in positions map: ", origin_system_id, " or ", destination_system_id)
-		return 1
-	
-	var origin_pos = system_positions[origin_system_id]
-	var dest_pos = system_positions[destination_system_id]
-	
-	var map_distance = origin_pos.distance_to(dest_pos)
-	
-	# Convert distance to jump count
-	var jumps = 1
-	if map_distance > 150: jumps = 2
-	if map_distance > 300: jumps = 3
-	if map_distance > 450: jumps = 4
-	if map_distance > 600: jumps = 5
-	
-	return jumps
+	"""Legacy method - now uses actual pathfinding"""
+	return UniverseManager.get_jump_distance(origin_system_id, destination_system_id)
 
 static func get_system_positions() -> Dictionary:
-	"""Get system positions using integer IDs as keys"""
-	var map_width = 480
-	var map_height = 500
-	var margin = 50
-	var positions = {}
+	"""Legacy method - kept for compatibility but no longer used for distance calculation"""
+	print("Warning: get_system_positions() is deprecated. Distance calculation now uses pathfinding.")
 	
-	# Get positions from database through UniverseManager
+	var positions = {}
 	UniverseManager.ensure_all_systems_loaded()
 	var systems = UniverseManager.universe_data.get("systems", {})
 	
-	# systems has integer keys
 	for system_id in systems.keys():
 		var system_data = systems[system_id]
 		var map_pos = system_data.get("map_position", {"x": 0.5, "y": 0.5})
-		positions[system_id] = Vector2(
-			margin + map_width * map_pos.x,
-			margin + map_height * map_pos.y
-		)
+		positions[system_id] = Vector2(map_pos.x * 480 + 50, map_pos.y * 500 + 50)
 	
 	return positions
 
+# =============================================================================
+# UTILITY METHODS - Updated for pathfinding
+# =============================================================================
+
 static func get_mission_description(mission_data: Dictionary) -> String:
-	"""Generate mission description using names for display"""
+	"""Generate mission description using actual jump distances"""
 	var cargo_type = mission_data.get("cargo_type", "Unknown Cargo")
 	var cargo_weight = mission_data.get("cargo_weight", 0)
 	var destination_planet = mission_data.get("destination_planet_name", "Unknown Planet")
@@ -207,14 +227,13 @@ static func format_credits(amount: int) -> String:
 	return result
 
 # =============================================================================
-# DEBUG METHODS - Updated for integer IDs
+# DEBUG METHODS - Updated for pathfinding system
 # =============================================================================
 
 static func debug_generate_test_missions() -> Array[Dictionary]:
-	"""Generate test missions using integer IDs"""
-	print("=== GENERATING TEST MISSIONS ===")
+	"""Generate test missions using pathfinding system"""
+	print("=== GENERATING TEST MISSIONS WITH PATHFINDING ===")
 	
-	# Get a test planet from current system
 	var current_system = UniverseManager.get_current_system()
 	var celestial_bodies = current_system.get("celestial_bodies", [])
 	
@@ -222,47 +241,76 @@ static func debug_generate_test_missions() -> Array[Dictionary]:
 		print("No celestial bodies in current system for testing")
 		return []
 	
-	var test_planet = celestial_bodies[0]  # Use first planet
-	var current_system_id = UniverseManager.current_system_id  # This is now an integer
+	var test_planet = celestial_bodies[0]
+	var current_system_id = UniverseManager.current_system_id
 	
 	var missions = generate_missions_for_planet(test_planet, current_system_id)
 	
-	print("=== TEST MISSIONS GENERATED ===")
+	print("=== TEST MISSIONS GENERATED WITH ACTUAL DISTANCES ===")
 	for mission in missions:
 		print(get_mission_description(mission))
 		print("---")
 	
 	return missions
 
-static func debug_print_all_destinations():
-	"""Print all destinations with integer IDs"""
-	print("=== ALL LANDABLE DESTINATIONS ===")
-	var destinations = get_all_landable_destinations()
-	for dest in destinations:
-		print("System ID ", dest.system_id, " (", dest.system_name, ") - Planet ID ", dest.planet_id, " (", dest.planet_name, ") - Type: ", dest.planet_type)
-	print("=== TOTAL: ", destinations.size(), " destinations ===")
-
-static func debug_test_jump_calculations():
-	"""Test jump calculations with integer IDs"""
-	print("=== TESTING JUMP CALCULATIONS ===")
+static func debug_test_distance_distribution():
+	"""Test the distance distribution system"""
+	print("=== TESTING DISTANCE DISTRIBUTION ===")
 	
-	# Get some system IDs for testing
-	UniverseManager.ensure_all_systems_loaded()
-	var systems = UniverseManager.universe_data.get("systems", {})
-	var system_ids = systems.keys()
+	var current_system_id = UniverseManager.current_system_id
 	
-	if system_ids.size() >= 4:
-		var test_pairs = [
-			[system_ids[0], system_ids[1]],
-			[system_ids[0], system_ids[2]],
-			[system_ids[1], system_ids[3]] if system_ids.size() > 3 else [system_ids[1], system_ids[2]],
-			[system_ids[2], system_ids[0]]
-		]
+	# Test distribution over many iterations
+	var distribution_test = {"close": 0, "medium": 0, "long": 0}
+	var test_iterations = 100
+	
+	# Get destination pools
+	var destination_pools = get_destination_pools_by_distance(current_system_id, -1)  # -1 to not exclude any planet
+	
+	if are_all_pools_empty(destination_pools):
+		print("No destinations available for testing")
+		return
+	
+	# Test pool selection distribution
+	for i in range(test_iterations):
+		var selected_pool = select_destination_pool(destination_pools)
 		
-		for pair in test_pairs:
-			var jumps = calculate_jump_distance(pair[0], pair[1])
-			var name1 = UniverseManager.get_system_name(pair[0])
-			var name2 = UniverseManager.get_system_name(pair[1])
-			print("System ", pair[0], " (", name1, ") to System ", pair[1], " (", name2, "): ", jumps, " jumps")
+		if selected_pool == destination_pools.close:
+			distribution_test.close += 1
+		elif selected_pool == destination_pools.medium:
+			distribution_test.medium += 1
+		elif selected_pool == destination_pools.long:
+			distribution_test.long += 1
 	
-	print("=== JUMP CALCULATION TESTS COMPLETE ===")
+	# Print results
+	print("Distribution test results (", test_iterations, " iterations):")
+	print("  Close (1-5 jumps): ", distribution_test.close, "% (target: 75%)")
+	print("  Medium (6-10 jumps): ", distribution_test.medium, "% (target: 20%)")
+	print("  Long (11-20 jumps): ", distribution_test.long, "% (target: 5%)")
+	
+	# Test actual pathfinding
+	print("\nPathfinding test from current system:")
+	UniverseManager.debug_distance_distribution(current_system_id)
+	
+	print("=== DISTANCE DISTRIBUTION TEST COMPLETE ===")
+
+static func debug_pathfinding_performance():
+	"""Test pathfinding performance"""
+	print("=== PATHFINDING PERFORMANCE TEST ===")
+	
+	var start_time = Time.get_ticks_msec()
+	var current_system_id = UniverseManager.current_system_id
+	
+	# Test getting destinations for all three ranges
+	var close_destinations = UniverseManager.get_landable_destinations_by_distance(current_system_id, 1, 5)
+	var medium_destinations = UniverseManager.get_landable_destinations_by_distance(current_system_id, 6, 10)
+	var long_destinations = UniverseManager.get_landable_destinations_by_distance(current_system_id, 11, 20)
+	
+	var end_time = Time.get_ticks_msec()
+	var total_time = end_time - start_time
+	
+	print("Performance results:")
+	print("  Close destinations: ", close_destinations.size())
+	print("  Medium destinations: ", medium_destinations.size())
+	print("  Long destinations: ", long_destinations.size())
+	print("  Total time: ", total_time, "ms")
+	print("=== PERFORMANCE TEST COMPLETE ===")

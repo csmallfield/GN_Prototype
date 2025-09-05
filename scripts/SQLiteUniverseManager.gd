@@ -22,6 +22,12 @@ var current_system_cache: Dictionary = {}
 var connection_cache: Dictionary = {}  # int -> Array[int] (connected system IDs)
 var system_name_cache: Dictionary = {}  # int -> String (for display only)
 
+# Cache for pathfinding results
+var distance_cache: Dictionary = {}  # "origin_id:destination_id" -> distance
+var systems_by_distance_cache: Dictionary = {}  # "origin_id:min:max" -> Array[int]
+var connection_graph: Dictionary = {}  # int -> Array[int] (bidirectional connections)
+
+
 # Mission system
 var current_system_missions: Dictionary = {}  # int (planet_id) -> Array[mission_data]
 
@@ -29,6 +35,9 @@ func _ready():
 	print("SQLite UniverseManager initializing with integer ID system...")
 	initialize_database()
 	load_governments()
+	
+	# Build connection graph on startup
+	build_connection_graph()
 	
 	# Start in system with ID 1 (should be your starting system)
 	var starting_system_id = get_system_id_by_name("Helios")
@@ -73,6 +82,222 @@ func load_governments():
 			"starting_reputation": 0
 		}
 	}
+
+# =============================================================================
+# PATHFINDING SYSTEM
+# =============================================================================
+
+func build_connection_graph():
+	"""Build bidirectional connection graph for pathfinding"""
+	print("Building connection graph for pathfinding...")
+	connection_graph.clear()
+	
+	# Get all connections from database
+	var connections_query = """
+		SELECT DISTINCT source_system_id, target_system_id
+		FROM system_connections;
+	"""
+	
+	db.query(connections_query)
+	var results = db.query_result
+	
+	# Build bidirectional graph
+	for row in results:
+		var source_id = row.source_system_id
+		var target_id = row.target_system_id
+		
+		# Add forward connection
+		if not connection_graph.has(source_id):
+			connection_graph[source_id] = []
+		if target_id not in connection_graph[source_id]:
+			connection_graph[source_id].append(target_id)
+		
+		# Add reverse connection (bidirectional)
+		if not connection_graph.has(target_id):
+			connection_graph[target_id] = []
+		if source_id not in connection_graph[target_id]:
+			connection_graph[target_id].append(source_id)
+	
+	print("Connection graph built with ", connection_graph.size(), " systems")
+
+func find_shortest_path(origin_system_id: int, destination_system_id: int) -> Array[int]:
+	"""Find shortest path between systems using BFS. Returns array of system IDs."""
+	if origin_system_id == destination_system_id:
+		var result: Array[int] = [origin_system_id]
+		return result
+	
+	if not connection_graph.has(origin_system_id) or not connection_graph.has(destination_system_id):
+		var empty_result: Array[int] = []
+		return empty_result  # One or both systems not in graph
+	
+	# BFS to find shortest path
+	var queue: Array = [[origin_system_id]]  # Array of paths
+	var visited: Dictionary = {origin_system_id: true}
+	
+	while not queue.is_empty():
+		var current_path: Array = queue.pop_front()
+		var current_system: int = current_path[-1]
+		
+		# Check all connected systems
+		var connections = connection_graph.get(current_system, [])
+		for next_system in connections:
+			if next_system == destination_system_id:
+				# Found destination - create properly typed result
+				var final_path: Array[int] = []
+				for system_id in current_path:
+					final_path.append(system_id)
+				final_path.append(next_system)
+				return final_path
+			
+			if not visited.has(next_system):
+				visited[next_system] = true
+				var new_path: Array = current_path.duplicate()
+				new_path.append(next_system)
+				queue.append(new_path)
+	
+	var no_path_result: Array[int] = []
+	return no_path_result  # No path found
+
+func get_jump_distance(origin_system_id: int, destination_system_id: int) -> int:
+	"""Get jump distance between systems using cached pathfinding"""
+	if origin_system_id == destination_system_id:
+		return 0
+	
+	# Check cache first
+	var cache_key = str(origin_system_id) + ":" + str(destination_system_id)
+	if distance_cache.has(cache_key):
+		return distance_cache[cache_key]
+	
+	# Calculate using pathfinding
+	var path = find_shortest_path(origin_system_id, destination_system_id)
+	var distance = path.size() - 1 if path.size() > 0 else -1  # -1 means unreachable
+	
+	# Cache the result (and reverse direction)
+	distance_cache[cache_key] = distance
+	var reverse_key = str(destination_system_id) + ":" + str(origin_system_id)
+	distance_cache[reverse_key] = distance
+	
+	return distance
+
+func get_systems_within_jump_range(origin_system_id: int, min_jumps: int, max_jumps: int) -> Array[int]:
+	"""Get all systems within a specific jump range from origin"""
+	var cache_key = str(origin_system_id) + ":" + str(min_jumps) + ":" + str(max_jumps)
+	
+	# Check cache first
+	if systems_by_distance_cache.has(cache_key):
+		return systems_by_distance_cache[cache_key].duplicate()
+	
+	var systems_in_range: Array[int] = []
+	
+	# Get all systems and check their distance
+	var all_systems_query = "SELECT id FROM systems;"
+	db.query(all_systems_query)
+	var all_systems = db.query_result
+	
+	for system_row in all_systems:
+		var system_id = system_row.id
+		if system_id == origin_system_id:
+			continue  # Skip origin
+		
+		var distance = get_jump_distance(origin_system_id, system_id)
+		if distance >= min_jumps and distance <= max_jumps:
+			systems_in_range.append(system_id)
+	
+	# Cache result
+	systems_by_distance_cache[cache_key] = systems_in_range.duplicate()
+	
+	print("Found ", systems_in_range.size(), " systems within ", min_jumps, "-", max_jumps, " jumps of system ", origin_system_id)
+	return systems_in_range
+
+func get_landable_destinations_by_distance(origin_system_id: int, min_jumps: int, max_jumps: int) -> Array[Dictionary]:
+	"""Get landable destinations within specific jump range"""
+	var systems_in_range = get_systems_within_jump_range(origin_system_id, min_jumps, max_jumps)
+	var destinations: Array[Dictionary] = []
+	
+	for system_id in systems_in_range:
+		# Load system data if not cached
+		var system_data = load_system_data(system_id)
+		var system_name = get_system_name(system_id)
+		var celestial_bodies = system_data.get("celestial_bodies", [])
+		
+		for body in celestial_bodies:
+			if body.get("can_land", false):
+				var destination = {
+					"system_id": system_id,
+					"system_name": system_name,
+					"planet_id": body.get("id", -1),
+					"planet_name": body.get("name", "Unknown"),
+					"planet_type": body.get("type", "unknown"),
+					"jump_distance": get_jump_distance(origin_system_id, system_id)
+				}
+				destinations.append(destination)
+	
+	return destinations
+
+# =============================================================================
+# DEBUG METHODS FOR PATHFINDING
+# =============================================================================
+
+func debug_pathfinding_test(origin_id: int, destination_id: int):
+	"""Test pathfinding between two systems"""
+	print("=== PATHFINDING TEST ===")
+	print("Origin: ", get_system_name(origin_id), " (ID: ", origin_id, ")")
+	print("Destination: ", get_system_name(destination_id), " (ID: ", destination_id, ")")
+	
+	var path = find_shortest_path(origin_id, destination_id)
+	var distance = get_jump_distance(origin_id, destination_id)
+	
+	print("Distance: ", distance, " jumps")
+	print("Path: ")
+	for i in range(path.size()):
+		var system_id = path[i]
+		var system_name = get_system_name(system_id)
+		print("  ", i, ": ", system_name, " (ID: ", system_id, ")")
+	print("========================")
+
+func debug_distance_distribution(origin_id: int):
+	"""Analyze distance distribution from origin system"""
+	print("=== DISTANCE DISTRIBUTION FROM ", get_system_name(origin_id), " ===")
+	
+	var distance_counts = {}
+	var max_distance = 0
+	
+	# Count systems at each distance
+	var all_systems_query = "SELECT id FROM systems WHERE id != ?;"
+	db.query_with_bindings(all_systems_query, [origin_id])
+	var all_systems = db.query_result
+	
+	for system_row in all_systems:
+		var system_id = system_row.id
+		var distance = get_jump_distance(origin_id, system_id)
+		
+		if distance >= 0:  # -1 means unreachable
+			if not distance_counts.has(distance):
+				distance_counts[distance] = 0
+			distance_counts[distance] += 1
+			max_distance = max(max_distance, distance)
+	
+	# Print distribution
+	for d in range(1, max_distance + 1):
+		var count = distance_counts.get(d, 0)
+		print("Distance ", d, ": ", count, " systems")
+	
+	# Show ranges for mission generation
+	var range_1_5 = get_systems_within_jump_range(origin_id, 1, 5).size()
+	var range_6_10 = get_systems_within_jump_range(origin_id, 6, 10).size()
+	var range_11_20 = get_systems_within_jump_range(origin_id, 11, 20).size()
+	
+	print("Mission ranges:")
+	print("  1-5 jumps: ", range_1_5, " systems")
+	print("  6-10 jumps: ", range_6_10, " systems")
+	print("  11-20 jumps: ", range_11_20, " systems")
+	print("=======================================")
+
+func clear_pathfinding_cache():
+	"""Clear pathfinding caches (useful for testing)"""
+	distance_cache.clear()
+	systems_by_distance_cache.clear()
+	print("Pathfinding caches cleared")
 
 # =============================================================================
 # MAIN API - Integer ID Based
